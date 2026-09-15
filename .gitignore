@@ -1,0 +1,9 @@
+# Virtual Environment
+venv/
+__pycache__/
+
+# Kredensial & Variabel Lingkungan
+.env
+
+# Dataset Mentah Excel (Opsional, agar repo tidak berat)
+*.xlsx
