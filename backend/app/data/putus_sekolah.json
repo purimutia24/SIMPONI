@@ -1,0 +1,191 @@
+[
+    {
+        "nama_kabupaten_kota": "Kab. Bandung",
+        "putus_sd": 345,
+        "putus_smp": 85,
+        "putus_sma": 23,
+        "putus_smk": 3
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Bandung Barat",
+        "putus_sd": 195,
+        "putus_smp": 19,
+        "putus_sma": 28,
+        "putus_smk": 39
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Bekasi",
+        "putus_sd": 545,
+        "putus_smp": 73,
+        "putus_sma": 14,
+        "putus_smk": 22
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Bogor",
+        "putus_sd": 533,
+        "putus_smp": 254,
+        "putus_sma": 24,
+        "putus_smk": 99
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Ciamis",
+        "putus_sd": 49,
+        "putus_smp": 12,
+        "putus_sma": 5,
+        "putus_smk": 14
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Cianjur",
+        "putus_sd": 394,
+        "putus_smp": 144,
+        "putus_sma": 27,
+        "putus_smk": 86
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Cirebon",
+        "putus_sd": 228,
+        "putus_smp": 39,
+        "putus_sma": 3,
+        "putus_smk": 35
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Garut",
+        "putus_sd": 383,
+        "putus_smp": 218,
+        "putus_sma": 74,
+        "putus_smk": 52
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Indramayu",
+        "putus_sd": 204,
+        "putus_smp": 57,
+        "putus_sma": 8,
+        "putus_smk": 44
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Karawang",
+        "putus_sd": 418,
+        "putus_smp": 56,
+        "putus_sma": 3,
+        "putus_smk": 42
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Kuningan",
+        "putus_sd": 84,
+        "putus_smp": 30,
+        "putus_sma": 3,
+        "putus_smk": 30
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Majalengka",
+        "putus_sd": 71,
+        "putus_smp": 26,
+        "putus_sma": 6,
+        "putus_smk": 15
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Pangandaran",
+        "putus_sd": 23,
+        "putus_smp": 8,
+        "putus_sma": 0,
+        "putus_smk": 10
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Purwakarta",
+        "putus_sd": 86,
+        "putus_smp": 7,
+        "putus_sma": 1,
+        "putus_smk": 48
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Subang",
+        "putus_sd": 221,
+        "putus_smp": 29,
+        "putus_sma": 6,
+        "putus_smk": 77
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Sukabumi",
+        "putus_sd": 485,
+        "putus_smp": 60,
+        "putus_sma": 9,
+        "putus_smk": 64
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Sumedang",
+        "putus_sd": 76,
+        "putus_smp": 12,
+        "putus_sma": 0,
+        "putus_smk": 7
+    },
+    {
+        "nama_kabupaten_kota": "Kab. Tasikmalaya",
+        "putus_sd": 154,
+        "putus_smp": 35,
+        "putus_sma": 24,
+        "putus_smk": 17
+    },
+    {
+        "nama_kabupaten_kota": "Kota Bandung",
+        "putus_sd": 109,
+        "putus_smp": 23,
+        "putus_sma": 17,
+        "putus_smk": 2
+    },
+    {
+        "nama_kabupaten_kota": "Kota Banjar",
+        "putus_sd": 24,
+        "putus_smp": 0,
+        "putus_sma": 0,
+        "putus_smk": 8
+    },
+    {
+        "nama_kabupaten_kota": "Kota Bekasi",
+        "putus_sd": 209,
+        "putus_smp": 21,
+        "putus_sma": 2,
+        "putus_smk": 24
+    },
+    {
+        "nama_kabupaten_kota": "Kota Bogor",
+        "putus_sd": 94,
+        "putus_smp": 27,
+        "putus_sma": 1,
+        "putus_smk": 2
+    },
+    {
+        "nama_kabupaten_kota": "Kota Cimahi",
+        "putus_sd": 26,
+        "putus_smp": 1,
+        "putus_sma": 3,
+        "putus_smk": 9
+    },
+    {
+        "nama_kabupaten_kota": "Kota Cirebon",
+        "putus_sd": 46,
+        "putus_smp": 2,
+        "putus_sma": 1,
+        "putus_smk": 1
+    },
+    {
+        "nama_kabupaten_kota": "Kota Depok",
+        "putus_sd": 65,
+        "putus_smp": 32,
+        "putus_sma": 3,
+        "putus_smk": 25
+    },
+    {
+        "nama_kabupaten_kota": "Kota Sukabumi",
+        "putus_sd": 32,
+        "putus_smp": 1,
+        "putus_sma": 1,
+        "putus_smk": 7
+    },
+    {
+        "nama_kabupaten_kota": "Kota Tasikmalaya",
+        "putus_sd": 90,
+        "putus_smp": 5,
+        "putus_sma": 0,
+        "putus_smk": 3
+    }
+]
