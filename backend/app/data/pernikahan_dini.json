@@ -1568,7 +1568,7 @@
         "kode_kabupaten_kota": 3218,
         "nama_kabupaten_kota": "KABUPATEN PANGANDARAN",
         "jenis_kelamin": "PRIA",
-        "jumlah_perkawinan": NaN,
+        "jumlah_perkawinan": 0.0,
         "satuan": "ORANG",
         "tahun": 2024
     },
@@ -1579,7 +1579,7 @@
         "kode_kabupaten_kota": 3218,
         "nama_kabupaten_kota": "KABUPATEN PANGANDARAN",
         "jenis_kelamin": "WANITA",
-        "jumlah_perkawinan": NaN,
+        "jumlah_perkawinan": 0.0,
         "satuan": "ORANG",
         "tahun": 2024
     },
