@@ -1,0 +1,137 @@
+[
+    {
+        "wilayah": "Bogor",
+        "jumlah_balita_gizi_kurang": 12537,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Sukabumi",
+        "jumlah_balita_gizi_kurang": 5594,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Cianjur",
+        "jumlah_balita_gizi_kurang": 3039,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Bandung",
+        "jumlah_balita_gizi_kurang": 8605,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Garut",
+        "jumlah_balita_gizi_kurang": 8411,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Tasikmalaya",
+        "jumlah_balita_gizi_kurang": 4032,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Ciamis",
+        "jumlah_balita_gizi_kurang": 2174,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Kuningan",
+        "jumlah_balita_gizi_kurang": 2877,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Cirebon",
+        "jumlah_balita_gizi_kurang": 8438,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Majalengka",
+        "jumlah_balita_gizi_kurang": 2452,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Sumedang",
+        "jumlah_balita_gizi_kurang": 2683,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Indramayu",
+        "jumlah_balita_gizi_kurang": 5692,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Subang",
+        "jumlah_balita_gizi_kurang": 1986,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Purwakarta",
+        "jumlah_balita_gizi_kurang": 1136,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Karawang",
+        "jumlah_balita_gizi_kurang": 2481,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Bekasi",
+        "jumlah_balita_gizi_kurang": 3035,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Bandung Barat",
+        "jumlah_balita_gizi_kurang": 4596,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Pangandaran",
+        "jumlah_balita_gizi_kurang": 473,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Kota Bogor",
+        "jumlah_balita_gizi_kurang": 1638,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Kota Sukabumi",
+        "jumlah_balita_gizi_kurang": 961,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Kota Bandung",
+        "jumlah_balita_gizi_kurang": 3979,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Kota Cirebon",
+        "jumlah_balita_gizi_kurang": 1095,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Kota Bekasi",
+        "jumlah_balita_gizi_kurang": 4112,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Kota Depok",
+        "jumlah_balita_gizi_kurang": 3141,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Kota Cimahi",
+        "jumlah_balita_gizi_kurang": 953,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Kota Tasikmalaya",
+        "jumlah_balita_gizi_kurang": 2229,
+        "tahun": 2022
+    },
+    {
+        "wilayah": "Kota Banjar",
+        "jumlah_balita_gizi_kurang": 721,
+        "tahun": 2022
+    }
+]

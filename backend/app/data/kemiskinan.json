@@ -1,0 +1,206 @@
+[
+    {
+        "wilayah": "Bogor",
+        "garis_kemiskinan_maret": 513512,
+        "jumlah_penduduk_miskin_maret_ribu": 446.79,
+        "persentase_penduduk_miskin_maret": 7.05
+    },
+    {
+        "wilayah": "Sukabumi",
+        "garis_kemiskinan_maret": 416751,
+        "jumlah_penduduk_miskin_maret_ribu": 175.93,
+        "persentase_penduduk_miskin_maret": 6.87
+    },
+    {
+        "wilayah": "Cianjur",
+        "garis_kemiskinan_maret": 466509,
+        "jumlah_penduduk_miskin_maret_ribu": 239.3,
+        "persentase_penduduk_miskin_maret": 10.14
+    },
+    {
+        "wilayah": "Bandung",
+        "garis_kemiskinan_maret": 455636,
+        "jumlah_penduduk_miskin_maret_ribu": 239.87,
+        "persentase_penduduk_miskin_maret": 6.19
+    },
+    {
+        "wilayah": "Garut",
+        "garis_kemiskinan_maret": 393464,
+        "jumlah_penduduk_miskin_maret_ribu": 259.32,
+        "persentase_penduduk_miskin_maret": 9.68
+    },
+    {
+        "wilayah": "Tasikmalaya",
+        "garis_kemiskinan_maret": 400148,
+        "jumlah_penduduk_miskin_maret_ribu": 186.75,
+        "persentase_penduduk_miskin_maret": 10.23
+    },
+    {
+        "wilayah": "Ciamis",
+        "garis_kemiskinan_maret": 467497,
+        "jumlah_penduduk_miskin_maret_ribu": 90.79,
+        "persentase_penduduk_miskin_maret": 7.39
+    },
+    {
+        "wilayah": "Kuningan",
+        "garis_kemiskinan_maret": 420867,
+        "jumlah_penduduk_miskin_maret_ribu": 131.83,
+        "persentase_penduduk_miskin_maret": 11.88
+    },
+    {
+        "wilayah": "Cirebon",
+        "garis_kemiskinan_maret": 475046,
+        "jumlah_penduduk_miskin_maret_ribu": 245.92,
+        "persentase_penduduk_miskin_maret": 11
+    },
+    {
+        "wilayah": "Majalengka",
+        "garis_kemiskinan_maret": 547912,
+        "jumlah_penduduk_miskin_maret_ribu": 134.58,
+        "persentase_penduduk_miskin_maret": 10.82
+    },
+    {
+        "wilayah": "Sumedang",
+        "garis_kemiskinan_maret": 422714,
+        "jumlah_penduduk_miskin_maret_ribu": 108.89,
+        "persentase_penduduk_miskin_maret": 9.1
+    },
+    {
+        "wilayah": "Indramayu",
+        "garis_kemiskinan_maret": 560159,
+        "jumlah_penduduk_miskin_maret_ribu": 212.14,
+        "persentase_penduduk_miskin_maret": 11.93
+    },
+    {
+        "wilayah": "Subang",
+        "garis_kemiskinan_maret": 434161,
+        "jumlah_penduduk_miskin_maret_ribu": 152.56,
+        "persentase_penduduk_miskin_maret": 9.49
+    },
+    {
+        "wilayah": "Purwakarta",
+        "garis_kemiskinan_maret": 467948,
+        "jumlah_penduduk_miskin_maret_ribu": 81.44,
+        "persentase_penduduk_miskin_maret": 8.41
+    },
+    {
+        "wilayah": "Karawang",
+        "garis_kemiskinan_maret": 597345,
+        "jumlah_penduduk_miskin_maret_ribu": 187.77,
+        "persentase_penduduk_miskin_maret": 7.86
+    },
+    {
+        "wilayah": "Bekasi",
+        "garis_kemiskinan_maret": 674924,
+        "jumlah_penduduk_miskin_maret_ribu": 204.54,
+        "persentase_penduduk_miskin_maret": 4.8
+    },
+    {
+        "wilayah": "Bandung Barat",
+        "garis_kemiskinan_maret": 455325,
+        "jumlah_penduduk_miskin_maret_ribu": 179.7,
+        "persentase_penduduk_miskin_maret": 10.49
+    },
+    {
+        "wilayah": "Pangandaran",
+        "garis_kemiskinan_maret": 470068,
+        "jumlah_penduduk_miskin_maret_ribu": 35.95,
+        "persentase_penduduk_miskin_maret": 8.75
+    },
+    {
+        "wilayah": "Kota Bogor",
+        "garis_kemiskinan_maret": 699861,
+        "jumlah_penduduk_miskin_maret_ribu": 73.93,
+        "persentase_penduduk_miskin_maret": 6.53
+    },
+    {
+        "wilayah": "Kota Sukabumi",
+        "garis_kemiskinan_maret": 678258,
+        "jumlah_penduduk_miskin_maret_ribu": 24.1,
+        "persentase_penduduk_miskin_maret": 7.2
+    },
+    {
+        "wilayah": "Kota Bandung",
+        "garis_kemiskinan_maret": 614707,
+        "jumlah_penduduk_miskin_maret_ribu": 101.1,
+        "persentase_penduduk_miskin_maret": 3.87
+    },
+    {
+        "wilayah": "Kota Cirebon",
+        "garis_kemiskinan_maret": 545592,
+        "jumlah_penduduk_miskin_maret_ribu": 29.17,
+        "persentase_penduduk_miskin_maret": 9.02
+    },
+    {
+        "wilayah": "Kota Bekasi",
+        "garis_kemiskinan_maret": 842927,
+        "jumlah_penduduk_miskin_maret_ribu": 128.84,
+        "persentase_penduduk_miskin_maret": 4.01
+    },
+    {
+        "wilayah": "Kota Depok",
+        "garis_kemiskinan_maret": 843893,
+        "jumlah_penduduk_miskin_maret_ribu": 62.6,
+        "persentase_penduduk_miskin_maret": 2.34
+    },
+    {
+        "wilayah": "Kota Cimahi",
+        "garis_kemiskinan_maret": 612567,
+        "jumlah_penduduk_miskin_maret_ribu": 27,
+        "persentase_penduduk_miskin_maret": 4.39
+    },
+    {
+        "wilayah": "Kota Tasikmalaya",
+        "garis_kemiskinan_maret": 565377,
+        "jumlah_penduduk_miskin_maret_ribu": 76.71,
+        "persentase_penduduk_miskin_maret": 11.1
+    },
+    {
+        "wilayah": "Kota Banjar",
+        "garis_kemiskinan_maret": 430590,
+        "jumlah_penduduk_miskin_maret_ribu": 11.16,
+        "persentase_penduduk_miskin_maret": 5.85
+    },
+    {
+        "wilayah": "Jawa Barat",
+        "garis_kemiskinan_maret": 524052,
+        "jumlah_penduduk_miskin_maret_ribu": 3848.67,
+        "persentase_penduduk_miskin_maret": 7.46
+    },
+    {
+        "wilayah": "Metadata Indikator",
+        "garis_kemiskinan_maret": 0,
+        "jumlah_penduduk_miskin_maret_ribu": 0,
+        "persentase_penduduk_miskin_maret": 0
+    },
+    {
+        "wilayah": "Indikator",
+        "garis_kemiskinan_maret": 0,
+        "jumlah_penduduk_miskin_maret_ribu": 0,
+        "persentase_penduduk_miskin_maret": 0
+    },
+    {
+        "wilayah": "Garis Kemiskinan (GK)",
+        "garis_kemiskinan_maret": 0,
+        "jumlah_penduduk_miskin_maret_ribu": 0,
+        "persentase_penduduk_miskin_maret": 0
+    },
+    {
+        "wilayah": "Garis Kemiskinan (GK)",
+        "garis_kemiskinan_maret": 0,
+        "jumlah_penduduk_miskin_maret_ribu": 0,
+        "persentase_penduduk_miskin_maret": 0
+    },
+    {
+        "wilayah": "Persentase Penduduk Miskin (Headcount Index/P0)",
+        "garis_kemiskinan_maret": 0,
+        "jumlah_penduduk_miskin_maret_ribu": 0,
+        "persentase_penduduk_miskin_maret": 0
+    },
+    {
+        "wilayah": "Persentase Penduduk Miskin (Headcount Index/P0)",
+        "garis_kemiskinan_maret": 0,
+        "jumlah_penduduk_miskin_maret_ribu": 0,
+        "persentase_penduduk_miskin_maret": 0
+    }
+]
