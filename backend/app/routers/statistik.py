@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 import json
 import os
 from copy import deepcopy
@@ -8,6 +8,8 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 from pathlib import Path
 from dotenv import load_dotenv
+
+from app.deps import require_roles
 
 load_dotenv()
 router = APIRouter()
@@ -67,46 +69,96 @@ def fetch_bps(indicator: str, configured_url: str | None, variable: str | None):
         raise HTTPException(status_code=502, detail=f"BPS mengembalikan status tidak berhasil untuk {indicator}: {payload.get('message', payload.get('status'))}")
     return {"status": "success", "source": "BPS API", "indicator": indicator, "data": payload}
 
-@router.get("/pernikahan-dini")
-def get_pernikahan_dini():
-    return {"status": "success", "data": load_json_file(PATH_PERNIKAHAN)}
-
-@router.get("/putus-sekolah")
-def get_putus_sekolah():
-    return {"status": "success", "data": load_json_file(PATH_PUTUS_SEKOLAH)}
-
-
 @router.get("/peta-pernikahan-dini")
 def get_peta_pernikahan_dini(tahun: int | None = Query(default=None, ge=2000, le=2100)):
     geojson = load_json_file(PATH_GEOJSON)
     rows = load_json_file(PATH_PERNIKAHAN)
     totals = {}
-    years = {}
-    for row in rows:
-        if tahun is not None and row.get("tahun") != tahun:
-            continue
-        kode = row.get("kode_kabupaten_kota")
-        if kode is None:
-            continue
-        kode = int(kode)
-        totals[kode] = totals.get(kode, 0) + float(row.get("jumlah_perkawinan", 0) or 0)
-        years[kode] = max(years.get(kode, 0), int(row.get("tahun", 0) or 0))
 
-    maximum = max(totals.values(), default=0)
-    for feature in geojson.get("features", []):
+    for row in rows:
+        try:
+            row_year = int(row.get("tahun"))
+        except (TypeError, ValueError):
+            row_year = None
+
+        if tahun is not None and row_year != tahun:
+            continue
+
+        try:
+            kode = int(row.get("kode_kabupaten_kota"))
+            jumlah = float(row.get("jumlah_perkawinan", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+
+        totals[kode] = totals.get(kode, 0) + jumlah
+
+    features = geojson.get("features", [])
+    valid_codes = []
+
+    for feature in features:
+        properties = feature.get("properties", {})
+        try:
+            valid_codes.append(int(properties.get("ID_KAB")))
+        except (TypeError, ValueError):
+            continue
+
+    # Rata-rata mencakup seluruh wilayah GeoJSON, termasuk wilayah tanpa kasus.
+    rata_rata = (
+        sum(totals.get(kode, 0) for kode in valid_codes) / len(valid_codes)
+        if valid_codes
+        else 0
+    )
+
+    for feature in features:
         properties = feature.setdefault("properties", {})
-        kode = int(properties.get("ID_KAB", 0))
-        value = totals.get(kode, 0)
-        ratio = value / maximum if maximum else 0
+
+        try:
+            kode = int(properties.get("ID_KAB"))
+        except (TypeError, ValueError):
+            kode = None
+
+        jumlah = totals.get(kode, 0) if kode is not None else 0
+
+        if jumlah > rata_rata:
+            tingkat_risiko = "tinggi"
+        elif rata_rata > 0 and jumlah >= rata_rata * 0.5:
+            tingkat_risiko = "sedang"
+        else:
+            tingkat_risiko = "rendah"
+
         properties.update({
             "kode_kabupaten": kode,
             "nama_kabupaten": properties.get("KABKOT", ""),
-            "jumlah_kasus": round(value, 2),
-            "tahun": tahun or years.get(kode),
+            "jumlah_kasus": round(jumlah, 2),
+            "rata_rata_kasus": round(rata_rata, 2),
+            "di_atas_rata_rata": jumlah > rata_rata,
+            "tahun": tahun,
             "indikator": "pernikahan_dini",
-            "tingkat_risiko": "tinggi" if ratio >= 0.66 else "sedang" if ratio >= 0.33 else "rendah",
+            "tingkat_risiko": tingkat_risiko,
         })
-    return {"type": "FeatureCollection", "features": geojson.get("features", [])}
+
+    return {
+        "type": "FeatureCollection",
+        "features": features,
+    }
+
+@router.get("/pernikahan-dini")
+def get_pernikahan_dini(
+    tahun: int | None = Query(default=None, ge=2000, le=2100),
+):
+    data = load_json_file(PATH_PERNIKAHAN)
+
+    if tahun is not None:
+        data = [
+            row for row in data
+            if str(row.get("tahun", "")).strip() == str(tahun)
+        ]
+
+    return {"status": "success", "data": data}
+
+@router.get("/putus-sekolah")
+def get_putus_sekolah():
+    return {"status": "success", "data": load_json_file(PATH_PUTUS_SEKOLAH)}
 
 
 @router.get("/ringkasan")
@@ -133,7 +185,9 @@ def get_stunting():
 
 
 @router.get("/stunting-lokal")
-def get_stunting_lokal():
+def get_stunting_lokal(
+    user=Depends(require_roles("admin_pemda", "admin_pemprov")),
+):
     return {"status": "success", "source": "file", "data": load_json_file(PATH_STUNTING)}
 
 @router.get("/kemiskinan")
@@ -142,12 +196,16 @@ def get_kemiskinan():
 
 
 @router.get("/kemiskinan-lokal")
-def get_kemiskinan_lokal():
+def get_kemiskinan_lokal(
+    user=Depends(require_roles("admin_pemda", "admin_pemprov")),
+):
     return {"status": "success", "source": "file", "data": load_json_file(PATH_KEMISKINAN)}
 
 
 @router.get("/stunting-bps")
-def get_stunting_bps():
+def get_stunting_bps(
+    user=Depends(require_roles("admin_pemda", "admin_pemprov")),
+):
     if BPS_STUNTING_URL or BPS_STUNTING_VAR:
         return fetch_bps("stunting", BPS_STUNTING_URL, BPS_STUNTING_VAR)
     return {
@@ -159,7 +217,9 @@ def get_stunting_bps():
 
 
 @router.get("/kemiskinan-bps")
-def get_kemiskinan_bps():
+def get_kemiskinan_bps(
+    user=Depends(require_roles("admin_pemda", "admin_pemprov")),
+):
     if BPS_KEMISKINAN_URL or BPS_KEMISKINAN_VAR:
         return fetch_bps("kemiskinan", BPS_KEMISKINAN_URL, BPS_KEMISKINAN_VAR)
     return {

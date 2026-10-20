@@ -1,10 +1,12 @@
+from datetime import datetime
+
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import User
-from app.security import get_user_id_from_token
+from app.models import AccessToken, User, utcnow
+from app.security import get_user_id_from_token, hash_token
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -21,7 +23,8 @@ def get_current_user(
         )
     user_id = get_user_id_from_token(credentials.credentials.strip())
     user = db.get(User, user_id) if user_id else None
-    if not user or not user.is_active:
+    active_session = db.get(AccessToken, hash_token(credentials.credentials.strip()))
+    if not user or not user.is_active or not active_session or active_session.revoked_at or active_session.expires_at <= utcnow():
         raise HTTPException(
             status_code=401,
             detail="Access token tidak valid atau akun tidak aktif. Login ulang dan gunakan token terbaru.",

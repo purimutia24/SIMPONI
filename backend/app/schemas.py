@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 # Skema untuk Data Pernikahan Dini (menyesuaikan kolom Excel)
 class PernikahanDiniResponse(BaseModel):
@@ -38,12 +38,28 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    identity: str = Field(min_length=3)
+    identity: str = Field(
+        min_length=3,
+        validation_alias=AliasChoices("identity", "identifier"),
+    )
     password: str = Field(min_length=1)
+
+    @field_validator("identity")
+    @classmethod
+    def normalize_identity(cls, value: str) -> str:
+        return value.strip().lower()
 
 
 class ForgotPasswordRequest(BaseModel):
-    email: str
+    email: str = Field(min_length=3, max_length=255)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        value = value.strip().lower()
+        if "@" not in value or value.startswith("@") or value.endswith("@"):
+            raise ValueError("Email tidak valid")
+        return value
 
 
 class ResetPasswordRequest(BaseModel):
@@ -55,18 +71,25 @@ class ResetPasswordRequest(BaseModel):
     def validate_reset_token(cls, value: str) -> str:
         value = value.strip().strip('"')
         if len(value) < 20:
-            raise ValueError("Token harus diambil dari response forgot-password")
+            raise ValueError("Token harus diambil dari tautan pemulihan yang dikirim melalui email")
         return value
+
+
+class VerificationResponse(BaseModel):
+    status: str
+    message: str
 
 
 class UserResponse(BaseModel):
     id: int
     nik: Optional[str] = None
+    nip: Optional[str] = None
     email: str
     full_name: str
     role: str
     kode_kabupaten: Optional[int] = None
     is_active: bool
+    email_verified: bool
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -78,7 +101,22 @@ class TokenResponse(BaseModel):
 
 
 class ReportCreate(BaseModel):
+    pelapor_nama: str = Field(max_length=150)
+    pelapor_nik: str = Field(min_length=16, max_length=16)
+    pelapor_telepon: str = Field(max_length=20)
+    pelapor_email: str = Field(max_length=255)
+    pelapor_domisili: str = Field(max_length=150)
+    hubungan_pelapor: str = Field(max_length=100)
+    usia_perempuan: str = Field(max_length=50)
+    usia_laki_laki: str = Field(max_length=50)
+    status_pendidikan: str = Field(max_length=100)
+    lokasi_kabupaten: str = Field(max_length=150)
+    lokasi_kecamatan_desa: str = Field(max_length=255)
+    waktu_rencana_akad: str = Field(max_length=100)
+    faktor_pendorong: str = Field(max_length=255)
     description: str = Field(min_length=10, max_length=10000)
+    pernyataan_benar: bool
+    setuju_pemrosesan: bool
 
 
 ReportStatus = Literal["Diajukan", "Diverifikasi", "Diproses", "Selesai", "Ditolak"]
@@ -87,7 +125,11 @@ ReportStatus = Literal["Diajukan", "Diverifikasi", "Diproses", "Selesai", "Ditol
 class ReportUpdate(BaseModel):
     status: ReportStatus
     note: str = Field(min_length=3, max_length=5000)
-    assigned_kode_kabupaten: Optional[int] = Field(default=None, ge=3201, le=3279)
+
+
+class DispositionCreate(BaseModel):
+    tujuan: str = Field(min_length=2, max_length=150)
+    catatan: str = Field(min_length=3, max_length=5000)
 
 
 class HistoryResponse(BaseModel):
@@ -105,7 +147,24 @@ class ReportResponse(BaseModel):
     id: int
     reporter_id: int
     kode_kabupaten: int
+    pelapor_nama: str
+    pelapor_nik: str
+    pelapor_telepon: str
+    pelapor_email: str
+    pelapor_domisili: str
+    hubungan_pelapor: str
+    usia_perempuan: str
+    usia_laki_laki: str
+    status_pendidikan: str
+    lokasi_kabupaten: str
+    lokasi_kecamatan_desa: str
+    waktu_rencana_akad: str
+    faktor_pendorong: str
     description: str
+    dokumen_pendukung: Optional[str]
+    foto_bukti_awal: Optional[str] = None
+    pernyataan_benar: bool
+    setuju_pemrosesan: bool
     status: str
     created_at: datetime
     updated_at: datetime
@@ -120,6 +179,29 @@ class OfficerCreate(BaseModel):
     email: str
     password: str = Field(min_length=8, max_length=128)
     kode_kabupaten: int = Field(ge=3201, le=3279)
+
+
+class ProvincialAdminCreate(BaseModel):
+    nip: str = Field(min_length=8, max_length=30)
+    full_name: str = Field(min_length=2, max_length=150)
+    email: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_admin_email(cls, value: str) -> str:
+        value = value.strip().lower()
+        if "@" not in value or value.startswith("@") or value.endswith("@"):
+            raise ValueError("Email tidak valid")
+        return value
+
+    @field_validator("nip")
+    @classmethod
+    def normalize_nip(cls, value: str) -> str:
+        value = value.strip()
+        if not value.isdigit():
+            raise ValueError("NIP harus berupa angka")
+        return value
 
 
 class StatisticUpdate(BaseModel):
