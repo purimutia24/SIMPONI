@@ -1,9 +1,37 @@
 # Virtual Environment
 venv/
+backend/venv/
 __pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Kredensial & Variabel Lingkungan
 .env
+.env.*
+!.env.example
 
 # Dataset Mentah Excel (Opsional, agar repo tidak berat)
 *.xlsx
+
+# Backend runtime data, exports, database dumps, and logs
+*.db
+*.sqlite
+*.sqlite3
+*.log
+backend/simponi_db.sql
+backend/users.csv
+backend/reports.csv
+backend/report_histories.csv
+backend/*_update.patch
+backend/admin-credentials.local.md
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Windows download metadata
+*:Zone.Identifier
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
