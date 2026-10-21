@@ -194,7 +194,16 @@ def authenticate(payload: LoginRequest, db: Session, required_role: str) -> Toke
         or (required_role == "public" and not user.email_verified)
         or not verify_password(payload.password, user.password_hash)
     ):
-        raise HTTPException(status_code=401, detail="Identitas atau kata sandi salah")
+        if required_role == "admin_pemda":
+            detail = (
+                "NIP/email atau kata sandi salah, atau akun Admin Pemda tidak aktif. "
+                "Periksa identitas dan minta Admin Pemprov memastikan akun aktif."
+            )
+        elif required_role == "admin_pemprov":
+            detail = "NIP/email atau kata sandi Admin Pemprov salah."
+        else:
+            detail = "Identitas atau kata sandi salah"
+        raise HTTPException(status_code=401, detail=detail)
     access_token = store_access_token(db, user)
     db.commit()
     return TokenResponse(access_token=access_token, user=serialize_user(user))

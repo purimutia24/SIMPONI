@@ -68,6 +68,20 @@ class AuthFlowTests(unittest.TestCase):
             auth.login(LoginRequest(identity=self.pemda.email, password=password), self.db)
         self.assertEqual(error.exception.status_code, 401)
 
+    def test_inactive_pemda_login_returns_actionable_generic_error(self):
+        self.pemda.is_active = False
+        self.db.commit()
+
+        with self.assertRaises(HTTPException) as error:
+            auth.login_admin_pemda(
+                LoginRequest(identity=self.pemda.nip, password="test-password-123"),
+                self.db,
+            )
+
+        self.assertEqual(error.exception.status_code, 401)
+        self.assertIn("atau akun Admin Pemda tidak aktif", error.exception.detail)
+        self.assertIn("Admin Pemprov", error.exception.detail)
+
     def test_register_requires_email_verification_before_login(self):
         sent_email = {}
         with patch.object(
