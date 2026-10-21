@@ -40,8 +40,6 @@ def save_upload(upload: UploadFile | None) -> str | None:
 
 @router.post("", response_model=ReportResponse, status_code=201)
 def create_report(
-    pelapor_nama: str = Form(...),
-    pelapor_nik: str = Form(...),
     pelapor_telepon: str = Form(...),
     pelapor_email: str = Form(...),
     pelapor_domisili: str = Form(...),
@@ -65,6 +63,11 @@ def create_report(
 ):
     if user.kode_kabupaten is None:
         raise HTTPException(status_code=422, detail="Akun belum memiliki kode kabupaten")
+    if not user.full_name.strip() or not user.nik or not user.nik.isdigit() or len(user.nik) != 16:
+        raise HTTPException(
+            status_code=422,
+            detail="Profil akun belum memiliki nama dan NIK yang valid",
+        )
 
     photo_upload = foto_bukti_awal or foto_bukti
     document_upload = dokumen_pendukung or dokumen_pendukung_lain
@@ -84,8 +87,8 @@ def create_report(
     dokumen_pendukung_path = save_upload(document_upload)
 
     report = Report(
-        reporter_id=user.id, kode_kabupaten=user.kode_kabupaten, pelapor_nama=pelapor_nama,
-        pelapor_nik=pelapor_nik, pelapor_telepon=pelapor_telepon, pelapor_email=pelapor_email, pelapor_domisili=pelapor_domisili,
+        reporter_id=user.id, kode_kabupaten=user.kode_kabupaten, pelapor_nama=user.full_name.strip(),
+        pelapor_nik=user.nik, pelapor_telepon=pelapor_telepon, pelapor_email=pelapor_email, pelapor_domisili=pelapor_domisili,
         hubungan_pelapor=hubungan_pelapor, usia_perempuan=usia_perempuan, usia_laki_laki=usia_laki_laki, status_pendidikan=status_pendidikan,
         lokasi_kabupaten=lokasi_kabupaten, lokasi_kecamatan_desa=lokasi_kecamatan_desa, waktu_rencana_akad=waktu_rencana_akad,
         faktor_pendorong=faktor_pendorong, description=description.strip(),

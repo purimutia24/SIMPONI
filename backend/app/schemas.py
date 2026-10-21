@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # Skema untuk Data Pernikahan Dini (menyesuaikan kolom Excel)
 class PernikahanDiniResponse(BaseModel):
@@ -179,6 +179,58 @@ class OfficerCreate(BaseModel):
     email: str
     password: str = Field(min_length=8, max_length=128)
     kode_kabupaten: int = Field(ge=3201, le=3279)
+
+
+class OfficerUpdate(BaseModel):
+    nip: str | None = Field(default=None, min_length=8, max_length=30)
+    full_name: str | None = Field(default=None, min_length=2, max_length=150)
+    email: str | None = Field(default=None, min_length=3, max_length=255)
+    password: str | None = Field(default=None, min_length=8, max_length=128)
+    kode_kabupaten: int | None = Field(default=None, ge=3201, le=3279)
+
+    @field_validator("nip")
+    @classmethod
+    def normalize_officer_nip(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        value = value.strip()
+        if not value.isdigit():
+            raise ValueError("NIP harus berupa angka")
+        return value
+
+    @field_validator("full_name")
+    @classmethod
+    def normalize_officer_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        value = value.strip()
+        if len(value) < 2:
+            raise ValueError("Nama petugas minimal 2 karakter")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def normalize_officer_email(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        value = value.strip().lower()
+        if "@" not in value or value.startswith("@") or value.endswith("@"):
+            raise ValueError("Email tidak valid")
+        return value
+
+    @model_validator(mode="after")
+    def require_update_field(self):
+        if not self.model_fields_set or (
+            self.model_fields_set == {"password"} and self.password is None
+        ):
+            raise ValueError("Minimal satu data petugas harus diisi")
+        if any(
+            getattr(self, field) is None
+            for field in self.model_fields_set
+            if field != "password"
+        ):
+            raise ValueError("Data petugas tidak boleh bernilai null")
+        return self
 
 
 class ProvincialAdminCreate(BaseModel):

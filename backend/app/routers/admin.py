@@ -6,16 +6,16 @@ from pathlib import Path
 
 import openpyxl
 from openpyxl.styles import Alignment, Font, PatternFill
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.deps import require_roles
-from app.models import Report, User
+from app.models import AccessToken, Report, ReportHistory, User
 from app.report_scope import DISTRICT_NAMES, scope_reports_to_user
-from app.schemas import OfficerCreate, ProvincialAdminCreate, StatisticUpdate, UserResponse
+from app.schemas import OfficerCreate, OfficerUpdate, ProvincialAdminCreate, StatisticUpdate, UserResponse
 from app.security import hash_password
 
 router = APIRouter(prefix="/admin", tags=["Administrasi"])
@@ -153,6 +153,67 @@ def list_officers(
 ):
     """Daftar semua petugas Admin Pemda."""
     return db.scalars(select(User).where(User.role == "admin_pemda").order_by(User.full_name)).all()
+
+
+@router.patch("/officers/{officer_id}", response_model=UserResponse)
+def update_officer(
+    officer_id: int,
+    payload: OfficerUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("admin_pemprov")),
+):
+    """Perbarui informasi akun petugas Admin Pemda."""
+    officer = db.get(User, officer_id)
+    if not officer or officer.role != "admin_pemda":
+        raise HTTPException(status_code=404, detail="Petugas tidak ditemukan")
+
+    values = payload.model_dump(exclude_unset=True)
+    if payload.password is not None:
+        values["password_hash"] = hash_password(values.pop("password"))
+    else:
+        values.pop("password", None)
+
+    if not values:
+        raise HTTPException(status_code=422, detail="Minimal satu data petugas harus diperbarui")
+
+    if "nip" in values or "email" in values:
+        duplicate = db.scalar(
+            select(User).where(
+                User.id != officer_id,
+                (User.nip == values.get("nip", officer.nip))
+                | (func.lower(User.email) == values.get("email", officer.email).lower()),
+            )
+        )
+        if duplicate:
+            raise HTTPException(status_code=409, detail="NIP atau email sudah digunakan")
+
+    for field, value in values.items():
+        setattr(officer, field, value)
+    db.commit()
+    db.refresh(officer)
+    return officer
+
+
+@router.delete("/officers/{officer_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_officer(
+    officer_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("admin_pemprov")),
+):
+    """Hapus akun petugas dan pertahankan riwayat aksi tanpa identitas akun."""
+    officer = db.get(User, officer_id)
+    if not officer or officer.role != "admin_pemda":
+        raise HTTPException(status_code=404, detail="Petugas tidak ditemukan")
+
+    db.execute(
+        update(ReportHistory)
+        .where(ReportHistory.actor_id == officer_id)
+        .values(actor_id=None)
+    )
+    db.execute(delete(AccessToken).where(AccessToken.user_id == officer_id))
+    db.delete(officer)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/provincial-admins", response_model=UserResponse, status_code=201)

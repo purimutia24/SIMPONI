@@ -38,6 +38,17 @@ For Gmail, enable 2-Step Verification and create an App Password in the Google A
 - `POST /api/v1/auth/logout`: revoke the current bearer token.
 - `POST /api/v1/auth/forgot-password` and `POST /api/v1/auth/reset-password`: email recovery flow.
 
+## Admin Pemda officer management
+
+Admin Pemprov can manage Admin Pemda accounts using a bearer token:
+
+- `PATCH /api/v1/admin/officers/{officer_id}` updates supplied fields (`nip`,
+  `full_name`, `email`, `kode_kabupaten`, and optionally `password`). Omit
+  `password` to keep the current password.
+- `DELETE /api/v1/admin/officers/{officer_id}` permanently removes the account.
+  Active tokens are deleted and report history is retained with the actor
+  identity cleared.
+
 ## Report attachments
 
 Submit report attachments as `multipart/form-data` to `POST /api/v1/reports`.
@@ -62,3 +73,17 @@ Run the full API integration suite in an isolated temporary database and port:
 ```bash
 bash run_test.sh
 ```
+
+## Locust smoke test
+
+Start the API locally first, then run a small smoke test from this directory:
+
+```bash
+source venv/bin/activate
+locust -f locustfile.py --headless -u 1 -r 1 -t 20s --host http://127.0.0.1:8000
+```
+
+The report should show zero failures for the summary and map endpoints. Locust
+also marks invalid JSON or an unexpected response shape as a failure. The map
+response is large and may take several seconds; increase user count gradually
+and run load tests only against a development or test server you control.

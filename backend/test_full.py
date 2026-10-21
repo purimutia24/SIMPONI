@@ -9,7 +9,6 @@ import json
 import os
 import sys
 import urllib.request
-import urllib.parse
 import urllib.error
 from pathlib import Path
 
@@ -40,7 +39,8 @@ def req(method, path, body=None, token=None, content_type="application/json"):
     r = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
         res = urllib.request.urlopen(r)
-        return res.status, json.loads(res.read())
+        response_body = res.read()
+        return res.status, json.loads(response_body) if response_body else {}
     except urllib.error.HTTPError as e:
         body = e.read()
         try:
@@ -48,10 +48,31 @@ def req(method, path, body=None, token=None, content_type="application/json"):
         except json.JSONDecodeError:
             return e.code, {"error": body.decode(errors="ignore")}
 
-def form_req(path, fields: dict, token=None):
+def form_req(path, fields: dict, token=None, files=None):
     url = BASE + path
-    data = urllib.parse.urlencode(fields).encode("utf-8")
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    boundary = "----SIMPONITestBoundary"
+    parts = []
+    for name, value in fields.items():
+        parts.extend((
+            f"--{boundary}\r\n".encode(),
+            f'Content-Disposition: form-data; name="{name}"\r\n\r\n'.encode(),
+            str(value).encode("utf-8"),
+            b"\r\n",
+        ))
+    for name, (filename, content, content_type) in (files or {}).items():
+        parts.extend((
+            f"--{boundary}\r\n".encode(),
+            (
+                f'Content-Disposition: form-data; name="{name}"; '
+                f'filename="{filename}"\r\n'
+            ).encode(),
+            f"Content-Type: {content_type}\r\n\r\n".encode(),
+            content,
+            b"\r\n",
+        ))
+    parts.append(f"--{boundary}--\r\n".encode())
+    data = b"".join(parts)
+    headers = {"Content-Type": f"multipart/form-data; boundary={boundary}"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     r = urllib.request.Request(url, data=data, headers=headers, method="POST")
@@ -107,6 +128,7 @@ db.close()
 c, d = req("POST", "/api/v1/auth/login", {"identity": "budi@test.com", "password": "password123"})
 results.append(check("Login masyarakat", c, d))
 pub_token = d.get("access_token")
+public_user = d.get("user", {})
 
 c, d = req("POST", "/api/v1/auth/login", {"identity": "budi@test.com", "password": "password123"})
 results.append(check("Login masyarakat via email", c, d))
@@ -123,8 +145,8 @@ assert "reset_token" not in d, "Token pemulihan tidak boleh dikembalikan di resp
 # ─── Laporan ─────────────────────────────────────────────────────
 print("\n[4] Laporan Masyarakat")
 c, d = form_req("/api/v1/reports", {
-    "pelapor_nama": "Budi Santoso",
-    "pelapor_nik": "3205112233445566",
+    "pelapor_nama": "Nama yang dimanipulasi",
+    "pelapor_nik": "3201998877665544",
     "pelapor_telepon": "08123456789",
     "pelapor_email": "budi@test.com",
     "pelapor_domisili": "Kabupaten Garut",
@@ -139,9 +161,13 @@ c, d = form_req("/api/v1/reports", {
     "description": "Saya mengetahui seorang anak perempuan usia 15 tahun yang akan dinikahkan paksa oleh orang tuanya karena alasan ekonomi. Pernikahan direncanakan akhir bulan ini.",
     "pernyataan_benar": "true",
     "setuju_pemrosesan": "true",
-}, token=pub_token)
+}, token=pub_token, files={
+    "foto_bukti_awal": ("bukti.txt", b"evidence for integration test", "text/plain"),
+})
 results.append(check("Buat laporan (form data)", c, d, 201))
 report_id = d.get("id")
+assert d.get("pelapor_nama") == public_user.get("full_name")
+assert d.get("pelapor_nik") == public_user.get("nik")
 assert d.get("status") == "Diajukan", f"Status awal harus Diajukan: {d}"
 assert len(d.get("histories", [])) == 1, "Harus ada 1 history awal"
 print(f"       Report ID: {report_id}, status: {d.get('status')}, histories: {len(d.get('histories', []))} ✓")
@@ -196,6 +222,11 @@ c, d = req("POST", "/api/v1/admin/officers", {
 }, token=prov_token)
 results.append(check("Buat akun Admin Pemda (oleh Pemprov)", c, d, 201))
 officer_id = d.get("id")
+c, d = req("PATCH", f"/api/v1/admin/officers/{officer_id}", {
+    "full_name": "Petugas Garut Diperbarui",
+}, token=prov_token)
+results.append(check("Update data petugas", c, d))
+assert d.get("full_name") == "Petugas Garut Diperbarui"
 
 c, d = req("GET", "/api/v1/admin/officers", token=prov_token)
 results.append(check("List Admin Pemda (oleh Pemprov)", c, d))
@@ -317,7 +348,9 @@ c, d = form_req("/api/v1/reports", {
     "faktor_pendorong": "Ekonomi",
     "description": "Laporan dari wilayah Bogor untuk tes isolasi wilayah.",
     "pernyataan_benar": "true", "setuju_pemrosesan": "true",
-}, token=bogor_token)
+}, token=bogor_token, files={
+    "foto_bukti_awal": ("bukti-bogor.txt", b"evidence for integration test", "text/plain"),
+})
 bogor_report_id = d.get("id")
 
 # Aktifkan kembali Garut untuk tes ini
@@ -328,6 +361,13 @@ pemda_token = d.get("access_token")
 # Admin Garut coba akses laporan Bogor → harus 403
 c, d = req("GET", f"/api/v1/reports/{bogor_report_id}", token=pemda_token)
 results.append(check("Admin Garut diblokir akses laporan Bogor (403)", c, d, 403))
+
+# ─── Hapus petugas setelah semua alur yang memerlukannya selesai ───
+c, d = req("DELETE", f"/api/v1/admin/officers/{officer_id}", token=prov_token)
+results.append(check("Hapus petugas", c, d, 204))
+c, d = req("GET", "/api/v1/admin/officers", token=prov_token)
+results.append(check("Petugas yang dihapus tidak lagi terdaftar", c, d))
+assert all(officer.get("id") != officer_id for officer in d)
 
 # ─── Statistik Publik ─────────────────────────────────────────────
 print("\n[11] Statistik Publik")

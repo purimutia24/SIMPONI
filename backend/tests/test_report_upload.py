@@ -58,8 +58,6 @@ class ReportUploadTests(unittest.TestCase):
             upload_fields.setdefault(field, None)
 
         return reports.create_report(
-            pelapor_nama="Reporter Test",
-            pelapor_nik="3205112233445566",
             pelapor_telepon="081234567890",
             pelapor_email="reporter@example.test",
             pelapor_domisili="Kabupaten Bogor",
@@ -116,6 +114,20 @@ class ReportUploadTests(unittest.TestCase):
     def test_report_without_any_file_is_rejected_instead_of_saved_as_null(self):
         with self.assertRaises(HTTPException) as error:
             self.create_report()
+
+        self.assertEqual(error.exception.status_code, 422)
+        self.assertEqual(self.db.query(Report).count(), 0)
+
+    def test_report_with_invalid_account_identity_is_rejected(self):
+        self.user.nik = "not-a-valid-nik"
+
+        with self.assertRaises(HTTPException) as error:
+            self.create_report(
+                foto_bukti_awal=UploadFile(
+                    file=io.BytesIO(b"test image"),
+                    filename="bukti.jpg",
+                )
+            )
 
         self.assertEqual(error.exception.status_code, 422)
         self.assertEqual(self.db.query(Report).count(), 0)
