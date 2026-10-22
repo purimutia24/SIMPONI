@@ -14,6 +14,7 @@ from app.schemas import DispositionCreate, ReportResponse, ReportUpdate
 
 router = APIRouter(prefix="/reports", tags=["Laporan"])
 UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads"
+MAX_UPLOAD_BYTES = 2 * 1024 * 1024
 
 
 def load_report(db: Session, report_id: int) -> Report:
@@ -29,12 +30,20 @@ def save_upload(upload: UploadFile | None) -> str | None:
     if not upload or not upload.filename:
         return None
 
+    upload.file.seek(0)
+    content = upload.file.read(MAX_UPLOAD_BYTES + 1)
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="Ukuran setiap file maksimal 2 MB",
+        )
+
     UPLOAD_DIR.mkdir(exist_ok=True)
     extension = Path(upload.filename).suffix.lower()
     if extension and not extension[1:].isalnum():
         extension = ""
     unique_name = f"{uuid.uuid4().hex}{extension}"
-    (UPLOAD_DIR / unique_name).write_bytes(upload.file.read())
+    (UPLOAD_DIR / unique_name).write_bytes(content)
     return f"uploads/{unique_name}"
 
 
@@ -51,7 +60,7 @@ def create_report(
     lokasi_kecamatan_desa: str = Form(...),
     waktu_rencana_akad: str = Form(...),
     faktor_pendorong: str = Form(...),
-    description: str = Form(...),
+    description: str = Form(..., min_length=100, max_length=10000),
     pernyataan_benar: bool = Form(...),
     setuju_pemrosesan: bool = Form(...),
     foto_bukti_awal: UploadFile = File(None),
@@ -68,6 +77,11 @@ def create_report(
             status_code=422,
             detail="Profil akun belum memiliki nama dan NIK yang valid",
         )
+    if len(description.strip()) < 100:
+        raise HTTPException(
+            status_code=422,
+            detail="Kronologi wajib diisi minimal 100 karakter",
+        )
 
     photo_upload = foto_bukti_awal or foto_bukti
     document_upload = dokumen_pendukung or dokumen_pendukung_lain
@@ -82,6 +96,22 @@ def create_report(
                 "foto_bukti, atau dokumen_pendukung"
             ),
         )
+
+    for upload in (
+        foto_bukti_awal,
+        foto_bukti,
+        dokumen_pendukung_lain,
+        dokumen_pendukung,
+    ):
+        if upload and upload.filename:
+            upload.file.seek(0, 2)
+            size = upload.file.tell()
+            upload.file.seek(0)
+            if size > MAX_UPLOAD_BYTES:
+                raise HTTPException(
+                    status_code=413,
+                    detail="Ukuran setiap file maksimal 2 MB",
+                )
 
     foto_bukti_awal_path = save_upload(photo_upload)
     dokumen_pendukung_path = save_upload(document_upload)

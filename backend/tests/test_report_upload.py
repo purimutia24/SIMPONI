@@ -48,7 +48,14 @@ class ReportUploadTests(unittest.TestCase):
         Base.metadata.drop_all(self.engine)
         self.engine.dispose()
 
-    def create_report(self, **upload_fields):
+    def create_report(
+        self,
+        description=(
+            "Laporan uji dengan kronologi yang cukup panjang untuk memenuhi "
+            "batas minimum seratus karakter secara benar."
+        ),
+        **upload_fields,
+    ):
         for field in (
             "foto_bukti_awal",
             "foto_bukti",
@@ -69,7 +76,7 @@ class ReportUploadTests(unittest.TestCase):
             lokasi_kecamatan_desa="Sukamaju",
             waktu_rencana_akad="2026-10-17",
             faktor_pendorong="Faktor keluarga",
-            description="Laporan uji dengan dokumen pendukung.",
+            description=description,
             pernyataan_benar=True,
             setuju_pemrosesan=True,
             db=self.db,
@@ -117,6 +124,66 @@ class ReportUploadTests(unittest.TestCase):
 
         self.assertEqual(error.exception.status_code, 422)
         self.assertEqual(self.db.query(Report).count(), 0)
+
+    def test_upload_over_two_megabytes_is_rejected_before_saving_any_file(self):
+        oversized = UploadFile(
+            file=io.BytesIO(b"x" * (reports.MAX_UPLOAD_BYTES + 1)),
+            filename="large.jpg",
+        )
+        valid = UploadFile(file=io.BytesIO(b"valid file"), filename="valid.pdf")
+
+        with self.assertRaises(HTTPException) as error:
+            self.create_report(
+                foto_bukti_awal=valid,
+                dokumen_pendukung_lain=oversized,
+            )
+
+        self.assertEqual(error.exception.status_code, 413)
+        self.assertEqual(self.db.query(Report).count(), 0)
+        self.assertEqual(list(Path(self.upload_dir.name).iterdir()), [])
+
+    def test_upload_at_two_megabytes_is_accepted(self):
+        upload = UploadFile(
+            file=io.BytesIO(b"x" * reports.MAX_UPLOAD_BYTES),
+            filename="at-limit.jpg",
+        )
+
+        report = self.create_report(foto_bukti_awal=upload)
+
+        saved_file = Path(self.upload_dir.name) / Path(report.foto_bukti_awal).name
+        self.assertEqual(saved_file.stat().st_size, reports.MAX_UPLOAD_BYTES)
+
+    def test_chronology_must_have_at_least_one_hundred_characters(self):
+        upload = UploadFile(file=io.BytesIO(b"evidence"), filename="bukti.jpg")
+
+        with self.assertRaises(HTTPException) as error:
+            self.create_report(description="x" * 99, foto_bukti_awal=upload)
+
+        self.assertEqual(error.exception.status_code, 422)
+        self.assertEqual(self.db.query(Report).count(), 0)
+        self.assertEqual(list(Path(self.upload_dir.name).iterdir()), [])
+
+    def test_chronology_with_exactly_one_hundred_characters_is_accepted(self):
+        chronology = "x" * 100
+        upload = UploadFile(file=io.BytesIO(b"evidence"), filename="bukti.jpg")
+
+        report = self.create_report(
+            description=chronology,
+            foto_bukti_awal=upload,
+        )
+
+        self.assertEqual(report.description, chronology)
+
+    def test_hundred_word_chronology_is_accepted(self):
+        chronology = " ".join(["kronologi"] * 100)
+        upload = UploadFile(file=io.BytesIO(b"evidence"), filename="bukti.jpg")
+
+        report = self.create_report(
+            description=chronology,
+            foto_bukti_awal=upload,
+        )
+
+        self.assertEqual(report.description, chronology)
 
     def test_report_with_invalid_account_identity_is_rejected(self):
         self.user.nik = "not-a-valid-nik"

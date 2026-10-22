@@ -144,7 +144,7 @@ assert "reset_token" not in d, "Token pemulihan tidak boleh dikembalikan di resp
 
 # ─── Laporan ─────────────────────────────────────────────────────
 print("\n[4] Laporan Masyarakat")
-c, d = form_req("/api/v1/reports", {
+report_fields = {
     "pelapor_nama": "Nama yang dimanipulasi",
     "pelapor_nik": "3201998877665544",
     "pelapor_telepon": "08123456789",
@@ -161,7 +161,8 @@ c, d = form_req("/api/v1/reports", {
     "description": "Saya mengetahui seorang anak perempuan usia 15 tahun yang akan dinikahkan paksa oleh orang tuanya karena alasan ekonomi. Pernikahan direncanakan akhir bulan ini.",
     "pernyataan_benar": "true",
     "setuju_pemrosesan": "true",
-}, token=pub_token, files={
+}
+c, d = form_req("/api/v1/reports", report_fields, token=pub_token, files={
     "foto_bukti_awal": ("bukti.txt", b"evidence for integration test", "text/plain"),
 })
 results.append(check("Buat laporan (form data)", c, d, 201))
@@ -172,9 +173,33 @@ assert d.get("status") == "Diajukan", f"Status awal harus Diajukan: {d}"
 assert len(d.get("histories", [])) == 1, "Harus ada 1 history awal"
 print(f"       Report ID: {report_id}, status: {d.get('status')}, histories: {len(d.get('histories', []))} ✓")
 
+c, d = form_req(
+    "/api/v1/reports",
+    {**report_fields, "description": "x" * 99},
+    token=pub_token,
+    files={
+        "foto_bukti_awal": ("too-short.txt", b"evidence", "text/plain"),
+    },
+)
+results.append(check("Kronologi di bawah 100 karakter ditolak", c, d, 422))
+
+c, d = form_req(
+    "/api/v1/reports",
+    report_fields,
+    token=pub_token,
+    files={
+        "foto_bukti_awal": (
+            "oversized.jpg",
+            b"x" * (2 * 1024 * 1024 + 1),
+            "image/jpeg",
+        ),
+    },
+)
+results.append(check("File di atas 2 MB ditolak", c, d, 413))
+
 c, d = req("GET", "/api/v1/reports/mine", token=pub_token)
 results.append(check("GET /reports/mine (riwayat masyarakat)", c, d))
-assert len(d) >= 1
+assert len(d) == 1, "Request dengan file besar atau kronologi pendek tidak boleh membuat laporan"
 
 c, d = req("GET", f"/api/v1/reports/{report_id}", token=pub_token)
 results.append(check(f"GET /reports/{report_id} (detail laporan)", c, d))
@@ -346,7 +371,10 @@ c, d = form_req("/api/v1/reports", {
     "status_pendidikan": "SMA", "lokasi_kabupaten": "Kab Bogor",
     "lokasi_kecamatan_desa": "Cibinong", "waktu_rencana_akad": "01/01/2025",
     "faktor_pendorong": "Ekonomi",
-    "description": "Laporan dari wilayah Bogor untuk tes isolasi wilayah.",
+    "description": (
+        "Laporan dari wilayah Bogor untuk menguji pembatasan akses lintas wilayah "
+        "agar hanya petugas dengan wilayah tugas yang sesuai dapat melihat laporan."
+    ),
     "pernyataan_benar": "true", "setuju_pemrosesan": "true",
 }, token=bogor_token, files={
     "foto_bukti_awal": ("bukti-bogor.txt", b"evidence for integration test", "text/plain"),

@@ -54,7 +54,9 @@ Admin Pemprov can manage Admin Pemda accounts using a bearer token:
 Submit report attachments as `multipart/form-data` to `POST /api/v1/reports`.
 Use `foto_bukti_awal` (or the legacy alias `foto_bukti`) for the initial
 evidence photo, and `dokumen_pendukung_lain` (or `dokumen_pendukung`) for a
-supporting document. The API saves the paths separately as
+supporting document. Each uploaded file is limited to 2 MiB; the API rejects
+oversized uploads with HTTP 413. The report chronology must contain at least
+100 non-whitespace characters. The API saves file paths separately as
 `foto_bukti_awal` and `dokumen_pendukung` on the report. Existing databases
 gain the nullable `foto_bukti_awal` column automatically when the API starts.
 Uploaded images are served inline at `/uploads/{filename}`; other files are

@@ -114,7 +114,7 @@ class ReportCreate(BaseModel):
     lokasi_kecamatan_desa: str = Field(max_length=255)
     waktu_rencana_akad: str = Field(max_length=100)
     faktor_pendorong: str = Field(max_length=255)
-    description: str = Field(min_length=10, max_length=10000)
+    description: str = Field(min_length=100, max_length=10000)
     pernyataan_benar: bool
     setuju_pemrosesan: bool
 
