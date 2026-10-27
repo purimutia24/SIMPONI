@@ -155,6 +155,7 @@ report_fields = {
     "usia_laki_laki": "18 Tahun",
     "status_pendidikan": "Putus Sekolah (SMP)",
     "lokasi_kabupaten": "Kabupaten Garut",
+    "kode_kabupaten": "3205",
     "lokasi_kecamatan_desa": "Kecamatan Tarogong Kaler, Desa Sukajaya",
     "waktu_rencana_akad": "25/10/2024",
     "faktor_pendorong": "Tekanan / Paksaan Orang Tua",
@@ -368,7 +369,8 @@ c, d = form_req("/api/v1/reports", {
     "pelapor_telepon": "081234", "pelapor_email": "bogor@test.com",
     "pelapor_domisili": "Kabupaten Bogor", "hubungan_pelapor": "Langsung",
     "usia_perempuan": "16", "usia_laki_laki": "19",
-    "status_pendidikan": "SMA", "lokasi_kabupaten": "Kab Bogor",
+    "status_pendidikan": "SMA", "lokasi_kabupaten": "Kabupaten Bogor",
+    "kode_kabupaten": "3201",
     "lokasi_kecamatan_desa": "Cibinong", "waktu_rencana_akad": "01/01/2025",
     "faktor_pendorong": "Ekonomi",
     "description": (

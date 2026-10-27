@@ -62,6 +62,11 @@ gain the nullable `foto_bukti_awal` column automatically when the API starts.
 Uploaded images are served inline at `/uploads/{filename}`; other files are
 served as downloads.
 
+Report jurisdiction is taken from the selected incident district (`kode_kabupaten`),
+not the reporter's NIK. The selected district code must match its location name.
+On startup, reports with recognized legacy district names are re-routed to that
+district; ambiguous or unrecognized locations are left unchanged.
+
 ## Tests
 
 Run isolated authentication tests without connecting to the configured database or SMTP server:

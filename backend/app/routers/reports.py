@@ -9,7 +9,12 @@ from sqlalchemy.orm import Session, selectinload
 from app.database import get_db
 from app.deps import get_current_user, require_roles
 from app.models import Report, ReportHistory, User, utcnow
-from app.report_scope import is_report_in_admin_scope, scope_reports_to_user
+from app.report_scope import (
+    DISTRICT_NAMES,
+    district_code_from_name,
+    is_report_in_admin_scope,
+    scope_reports_to_user,
+)
 from app.schemas import DispositionCreate, ReportResponse, ReportUpdate
 
 router = APIRouter(prefix="/reports", tags=["Laporan"])
@@ -57,6 +62,7 @@ def create_report(
     usia_laki_laki: str = Form(...),
     status_pendidikan: str = Form(...),
     lokasi_kabupaten: str = Form(...),
+    kode_kabupaten: int = Form(...),
     lokasi_kecamatan_desa: str = Form(...),
     waktu_rencana_akad: str = Form(...),
     faktor_pendorong: str = Form(...),
@@ -70,12 +76,20 @@ def create_report(
     db: Session = Depends(get_db),
     user: User = Depends(require_roles("public"))
 ):
-    if user.kode_kabupaten is None:
-        raise HTTPException(status_code=422, detail="Akun belum memiliki kode kabupaten")
     if not user.full_name.strip() or not user.nik or not user.nik.isdigit() or len(user.nik) != 16:
         raise HTTPException(
             status_code=422,
             detail="Profil akun belum memiliki nama dan NIK yang valid",
+        )
+    if kode_kabupaten not in DISTRICT_NAMES:
+        raise HTTPException(
+            status_code=422,
+            detail="Kabupaten/kota lokasi laporan tidak valid",
+        )
+    if district_code_from_name(lokasi_kabupaten) != kode_kabupaten:
+        raise HTTPException(
+            status_code=422,
+            detail="Kode kabupaten/kota tidak sesuai dengan lokasi laporan",
         )
     if len(description.strip()) < 100:
         raise HTTPException(
@@ -117,7 +131,7 @@ def create_report(
     dokumen_pendukung_path = save_upload(document_upload)
 
     report = Report(
-        reporter_id=user.id, kode_kabupaten=user.kode_kabupaten, pelapor_nama=user.full_name.strip(),
+        reporter_id=user.id, kode_kabupaten=kode_kabupaten, pelapor_nama=user.full_name.strip(),
         pelapor_nik=user.nik, pelapor_telepon=pelapor_telepon, pelapor_email=pelapor_email, pelapor_domisili=pelapor_domisili,
         hubungan_pelapor=hubungan_pelapor, usia_perempuan=usia_perempuan, usia_laki_laki=usia_laki_laki, status_pendidikan=status_pendidikan,
         lokasi_kabupaten=lokasi_kabupaten, lokasi_kecamatan_desa=lokasi_kecamatan_desa, waktu_rencana_akad=waktu_rencana_akad,

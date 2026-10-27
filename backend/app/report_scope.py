@@ -1,4 +1,6 @@
-from sqlalchemy import select
+import re
+
+from sqlalchemy import select, update
 
 from app.models import Report, User
 
@@ -14,6 +16,45 @@ DISTRICT_NAMES: dict[int, str] = {
     3274: "Kota Cirebon", 3275: "Kota Bekasi", 3276: "Kota Depok",
     3277: "Kota Cimahi", 3278: "Kota Tasikmalaya", 3279: "Kota Banjar",
 }
+
+def _normalize_district_name(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+
+
+_DISTRICT_CODES_BY_NAME = {}
+for _district_code, _district_name in DISTRICT_NAMES.items():
+    _DISTRICT_CODES_BY_NAME[_normalize_district_name(_district_name)] = _district_code
+    if _district_name.startswith("Kab. "):
+        _DISTRICT_CODES_BY_NAME[
+            _normalize_district_name(_district_name.replace("Kab. ", "Kabupaten ", 1))
+        ] = _district_code
+
+
+def district_code_from_name(value: str) -> int | None:
+    return _DISTRICT_CODES_BY_NAME.get(_normalize_district_name(value))
+
+
+def backfill_report_district_codes(db) -> int:
+    """Correct legacy report routing from recognized incident-district labels."""
+    changes = []
+    rows = db.execute(
+        select(Report.id, Report.kode_kabupaten, Report.lokasi_kabupaten)
+    )
+    for report_id, current_code, location_name in rows:
+        location_code = district_code_from_name(location_name)
+        if location_code is not None and current_code != location_code:
+            changes.append((report_id, location_code))
+
+    for report_id, location_code in changes:
+        db.execute(
+            update(Report)
+            .where(Report.id == report_id)
+            .values(kode_kabupaten=location_code)
+        )
+    changed = len(changes)
+    if changed:
+        db.commit()
+    return changed
 
 
 def is_report_in_admin_scope(report: Report, user: User) -> bool:

@@ -12,6 +12,7 @@ from app.database import Base, SessionLocal, engine
 from app.models import User
 import app.models
 from app.routers import admin, auth, reports, statistik
+from app.report_scope import backfill_report_district_codes
 from app.security import hash_password
 
 app = FastAPI(
@@ -193,6 +194,12 @@ def initialize_database():
                     "ADD CONSTRAINT fk_report_histories_reports "
                     "FOREIGN KEY (report_id) REFERENCES reports (id)"
                 ))
+
+    db = SessionLocal()
+    try:
+        backfill_report_district_codes(db)
+    finally:
+        db.close()
 
     # Seed akun Admin Pemprov dari environment variable
     nip      = os.getenv("ADMIN_PROVINSI_NIP")

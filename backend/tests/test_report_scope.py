@@ -5,7 +5,11 @@ from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
 from app.models import Report, User
-from app.report_scope import is_report_in_admin_scope, scope_reports_to_user
+from app.report_scope import (
+    backfill_report_district_codes,
+    is_report_in_admin_scope,
+    scope_reports_to_user,
+)
 
 
 class ReportScopeTests(unittest.TestCase):
@@ -53,10 +57,10 @@ class ReportScopeTests(unittest.TestCase):
         self.db.flush()
         return report
 
-    def test_admin_bogor_sees_reports_by_code_regardless_of_location_label(self):
+    def test_admin_bogor_sees_only_reports_routed_to_bogor(self):
         report_bogor = self.make_report(3201, "Kabupaten Bogor")
-        report_bogor_other_label = self.make_report(3201, "Wilayah Bogor")
-        report_garut = self.make_report(3205, "Kabupaten Bogor")
+        report_bogor_other_label = self.make_report(3201, "Kab. Bogor")
+        report_garut = self.make_report(3205, "Kabupaten Garut")
 
         visible_reports = self.db.scalars(
             scope_reports_to_user(select(Report), self.admin_bogor)
@@ -78,7 +82,7 @@ class ReportScopeTests(unittest.TestCase):
 
     def test_admin_without_supported_district_code_sees_no_reports(self):
         self.admin_bogor.kode_kabupaten = 3220
-        report = self.make_report(3220, "Kabupaten Bogor")
+        report = self.make_report(3220, "Kabupaten Cirebon")
 
         visible_reports = self.db.scalars(
             scope_reports_to_user(select(Report), self.admin_bogor)
@@ -86,6 +90,16 @@ class ReportScopeTests(unittest.TestCase):
 
         self.assertEqual(visible_reports, [])
         self.assertFalse(is_report_in_admin_scope(report, self.admin_bogor))
+
+    def test_backfill_routes_legacy_reports_by_incident_location(self):
+        legacy_bekasi_report = self.make_report(3201, "Kabupaten Bekasi")
+        bogor_city_report = self.make_report(3201, "Kota Bogor")
+
+        changed = backfill_report_district_codes(self.db)
+
+        self.assertEqual(changed, 2)
+        self.assertEqual(legacy_bekasi_report.kode_kabupaten, 3216)
+        self.assertEqual(bogor_city_report.kode_kabupaten, 3271)
 
 
 if __name__ == "__main__":

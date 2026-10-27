@@ -21,12 +21,12 @@ class ReportUploadTests(unittest.TestCase):
         Base.metadata.create_all(self.engine)
         self.db = sessionmaker(bind=self.engine)()
         self.user = User(
-            nik="3205112233445566",
+            nik="3201123456789012",
             email="reporter@example.test",
             full_name="Reporter Test",
             password_hash="unused",
             role="public",
-            kode_kabupaten=3205,
+            kode_kabupaten=3201,
         )
         self.db.add(self.user)
         self.db.commit()
@@ -50,6 +50,8 @@ class ReportUploadTests(unittest.TestCase):
 
     def create_report(
         self,
+        lokasi_kabupaten="Kabupaten Bogor",
+        kode_kabupaten=3201,
         description=(
             "Laporan uji dengan kronologi yang cukup panjang untuk memenuhi "
             "batas minimum seratus karakter secara benar."
@@ -72,7 +74,8 @@ class ReportUploadTests(unittest.TestCase):
             usia_perempuan="17 tahun",
             usia_laki_laki="17 tahun",
             status_pendidikan="SMA",
-            lokasi_kabupaten="Kabupaten Bogor",
+            lokasi_kabupaten=lokasi_kabupaten,
+            kode_kabupaten=kode_kabupaten,
             lokasi_kecamatan_desa="Sukamaju",
             waktu_rencana_akad="2026-10-17",
             faktor_pendorong="Faktor keluarga",
@@ -194,6 +197,35 @@ class ReportUploadTests(unittest.TestCase):
                     file=io.BytesIO(b"test image"),
                     filename="bukti.jpg",
                 )
+            )
+
+        self.assertEqual(error.exception.status_code, 422)
+        self.assertEqual(self.db.query(Report).count(), 0)
+
+    def test_report_routes_by_incident_location_not_reporter_nik(self):
+        self.user.kode_kabupaten = None
+        report = self.create_report(
+            lokasi_kabupaten="Kabupaten Bekasi",
+            kode_kabupaten=3216,
+            foto_bukti_awal=UploadFile(
+                file=io.BytesIO(b"evidence"),
+                filename="bukti.jpg",
+            ),
+        )
+
+        self.assertEqual(self.user.nik[:4], "3201")
+        self.assertEqual(report.kode_kabupaten, 3216)
+        self.assertEqual(report.lokasi_kabupaten, "Kabupaten Bekasi")
+
+    def test_report_rejects_mismatched_location_name_and_code(self):
+        with self.assertRaises(HTTPException) as error:
+            self.create_report(
+                lokasi_kabupaten="Kabupaten Bekasi",
+                kode_kabupaten=3201,
+                foto_bukti_awal=UploadFile(
+                    file=io.BytesIO(b"evidence"),
+                    filename="bukti.jpg",
+                ),
             )
 
         self.assertEqual(error.exception.status_code, 422)
