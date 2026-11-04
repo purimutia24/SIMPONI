@@ -1,4 +1,5 @@
 import uuid
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -20,6 +21,12 @@ from app.schemas import DispositionCreate, ReportResponse, ReportUpdate
 router = APIRouter(prefix="/reports", tags=["Laporan"])
 UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads"
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024
+MINOR_AGE = 19
+
+
+def age_from_value(value: str) -> int | None:
+    match = re.search(r"\d+", value.strip())
+    return int(match.group()) if match else None
 
 
 def load_report(db: Session, report_id: int) -> Report:
@@ -69,6 +76,8 @@ def create_report(
     description: str = Form(..., min_length=100, max_length=10000),
     pernyataan_benar: bool = Form(...),
     setuju_pemrosesan: bool = Form(...),
+    nama_perempuan: str = Form(""),
+    nama_laki_laki: str = Form(""),
     foto_bukti_awal: UploadFile = File(None),
     foto_bukti: UploadFile = File(None),
     dokumen_pendukung_lain: UploadFile = File(None),
@@ -86,10 +95,25 @@ def create_report(
             status_code=422,
             detail="Kabupaten/kota lokasi laporan tidak valid",
         )
-    if district_code_from_name(lokasi_kabupaten) != kode_kabupaten:
+    district_code = district_code_from_name(lokasi_kabupaten)
+    if district_code is None and str(lokasi_kabupaten).strip() == str(kode_kabupaten):
+        district_code = kode_kabupaten
+    if district_code != kode_kabupaten:
         raise HTTPException(
             status_code=422,
             detail="Kode kabupaten/kota tidak sesuai dengan lokasi laporan",
+        )
+    female_age = age_from_value(usia_perempuan)
+    male_age = age_from_value(usia_laki_laki)
+    if female_age is None or male_age is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Usia kedua calon mempelai harus diisi dengan angka",
+        )
+    if female_age >= MINOR_AGE and male_age >= MINOR_AGE:
+        raise HTTPException(
+            status_code=422,
+            detail="Laporan hanya dapat dibuat jika minimal salah satu calon mempelai berusia di bawah 19 tahun",
         )
     if len(description.strip()) < 100:
         raise HTTPException(
@@ -117,7 +141,7 @@ def create_report(
         dokumen_pendukung_lain,
         dokumen_pendukung,
     ):
-        if upload and upload.filename:
+        if  upload and upload.filename:
             upload.file.seek(0, 2)
             size = upload.file.tell()
             upload.file.seek(0)
@@ -130,10 +154,14 @@ def create_report(
     foto_bukti_awal_path = save_upload(photo_upload)
     dokumen_pendukung_path = save_upload(document_upload)
 
+    nama_perempuan_value = nama_perempuan.strip() if isinstance(nama_perempuan, str) else ""
+    nama_laki_laki_value = nama_laki_laki.strip() if isinstance(nama_laki_laki, str) else ""
     report = Report(
         reporter_id=user.id, kode_kabupaten=kode_kabupaten, pelapor_nama=user.full_name.strip(),
         pelapor_nik=user.nik, pelapor_telepon=pelapor_telepon, pelapor_email=pelapor_email, pelapor_domisili=pelapor_domisili,
-        hubungan_pelapor=hubungan_pelapor, usia_perempuan=usia_perempuan, usia_laki_laki=usia_laki_laki, status_pendidikan=status_pendidikan,
+        hubungan_pelapor=hubungan_pelapor, nama_perempuan=nama_perempuan_value or None,
+        nama_laki_laki=nama_laki_laki_value or None, usia_perempuan=usia_perempuan,
+        usia_laki_laki=usia_laki_laki, status_pendidikan=status_pendidikan,
         lokasi_kabupaten=lokasi_kabupaten, lokasi_kecamatan_desa=lokasi_kecamatan_desa, waktu_rencana_akad=waktu_rencana_akad,
         faktor_pendorong=faktor_pendorong, description=description.strip(),
         foto_bukti_awal=foto_bukti_awal_path, dokumen_pendukung=dokumen_pendukung_path,

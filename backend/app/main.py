@@ -63,6 +63,12 @@ def ensure_report_photo_column(database_engine=engine):
             conn.execute(text(
                 "ALTER TABLE reports ADD COLUMN foto_bukti_awal VARCHAR(255)"
             ))
+    for column in ("nama_perempuan", "nama_laki_laki"):
+        if column not in report_columns:
+            with database_engine.begin() as conn:
+                conn.execute(text(
+                    f"ALTER TABLE reports ADD COLUMN {column} VARCHAR(150)"
+                ))
 
 
 # ─── Router ───────────────────────────────────────────────────────────────────
@@ -96,6 +102,10 @@ def initialize_database():
                     conn.execute(text("ALTER TABLE users ADD COLUMN verification_expires_at DATETIME"))
                 if "nip" not in existing_cols:
                     conn.execute(text("ALTER TABLE users ADD COLUMN nip VARCHAR(30)"))
+                if "phone" not in existing_cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR(30)"))
+                if "profile_photo" not in existing_cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN profile_photo VARCHAR(255)"))
                 conn.execute(text(
                     "UPDATE users SET nip = nik, nik = NULL "
                     "WHERE role IN ('admin_pemda', 'admin_pemprov') "
@@ -111,6 +121,8 @@ def initialize_database():
             "email_verified": "BOOLEAN NOT NULL DEFAULT TRUE",
             "verification_token": "VARCHAR(64) NULL",
             "verification_expires_at": "DATETIME NULL",
+            "phone": "VARCHAR(30) NULL",
+            "profile_photo": "VARCHAR(255) NULL",
         }
         missing = {
             name: definition

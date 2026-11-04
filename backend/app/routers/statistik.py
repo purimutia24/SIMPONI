@@ -44,6 +44,30 @@ def load_json_file(path: Path):
     return deepcopy(_load_json_file(str(path)))
 
 
+def filter_rows(data, tahun: int | None = None, kabupaten: str | None = None):
+    if tahun is None and not kabupaten:
+        return data
+
+    requested_region = str(kabupaten).strip().lower() if kabupaten else None
+    filtered = []
+    for row in data:
+        if tahun is not None and str(row.get("tahun", "")).strip() != str(tahun):
+            continue
+        if requested_region:
+            row_region = str(
+                row.get("nama_kabupaten_kota")
+                or row.get("nama_kabupaten")
+                or row.get("kabupaten")
+                or row.get("kode_kabupaten_kota")
+                or row.get("kode_kabupaten")
+                or ""
+            ).strip().lower()
+            if row_region != requested_region:
+                continue
+        filtered.append(row)
+    return filtered
+
+
 def fetch_bps(indicator: str, configured_url: str | None, variable: str | None):
     if not BPS_API_KEY:
         raise HTTPException(status_code=503, detail="BPS_API_KEY belum dikonfigurasi")
@@ -70,7 +94,10 @@ def fetch_bps(indicator: str, configured_url: str | None, variable: str | None):
     return {"status": "success", "source": "BPS API", "indicator": indicator, "data": payload}
 
 @router.get("/peta-pernikahan-dini")
-def get_peta_pernikahan_dini(tahun: int | None = Query(default=None, ge=2000, le=2100)):
+def get_peta_pernikahan_dini(
+    tahun: int | None = Query(default=None, ge=2000, le=2100),
+    kabupaten: str | None = Query(default=None),
+):
     geojson = load_json_file(PATH_GEOJSON)
     rows = load_json_file(PATH_PERNIKAHAN)
     totals = {}
@@ -82,6 +109,8 @@ def get_peta_pernikahan_dini(tahun: int | None = Query(default=None, ge=2000, le
             row_year = None
 
         if tahun is not None and row_year != tahun:
+            continue
+        if kabupaten and str(row.get("kode_kabupaten_kota") or row.get("nama_kabupaten_kota", "")).strip().lower() != kabupaten.strip().lower():
             continue
 
         try:
@@ -145,28 +174,29 @@ def get_peta_pernikahan_dini(tahun: int | None = Query(default=None, ge=2000, le
 @router.get("/pernikahan-dini")
 def get_pernikahan_dini(
     tahun: int | None = Query(default=None, ge=2000, le=2100),
+    kabupaten: str | None = Query(default=None),
 ):
     data = load_json_file(PATH_PERNIKAHAN)
-
-    if tahun is not None:
-        data = [
-            row for row in data
-            if str(row.get("tahun", "")).strip() == str(tahun)
-        ]
-
+    data = filter_rows(data, tahun, kabupaten)
     return {"status": "success", "data": data}
 
 @router.get("/putus-sekolah")
-def get_putus_sekolah():
-    return {"status": "success", "data": load_json_file(PATH_PUTUS_SEKOLAH)}
+def get_putus_sekolah(
+    tahun: int | None = Query(default=None, ge=2000, le=2100),
+    kabupaten: str | None = Query(default=None),
+):
+    return {"status": "success", "data": filter_rows(load_json_file(PATH_PUTUS_SEKOLAH), tahun, kabupaten)}
 
 
 @router.get("/ringkasan")
-def get_ringkasan():
+def get_ringkasan(
+    tahun: int | None = Query(default=None, ge=2000, le=2100),
+    kabupaten: str | None = Query(default=None),
+):
     if not PATH_PERNIKAHAN.exists():
         raise HTTPException(status_code=404, detail="Data statistik belum tersedia")
     try:
-        data = load_json_file(PATH_PERNIKAHAN)
+        data = filter_rows(load_json_file(PATH_PERNIKAHAN), tahun, kabupaten)
         by_year = {}
         by_region = {}
         for row in data:
@@ -180,26 +210,36 @@ def get_ringkasan():
         raise HTTPException(status_code=500, detail=f"Gagal mengolah statistik: {error}") from error
 
 @router.get("/stunting")
-def get_stunting():
-    return {"status": "success", "source": "excel", "data": load_json_file(PATH_STUNTING)}
+def get_stunting(
+    tahun: int | None = Query(default=None, ge=2000, le=2100),
+    kabupaten: str | None = Query(default=None),
+):
+    return {"status": "success", "source": "excel", "data": filter_rows(load_json_file(PATH_STUNTING), tahun, kabupaten)}
 
 
 @router.get("/stunting-lokal")
 def get_stunting_lokal(
+    tahun: int | None = Query(default=None, ge=2000, le=2100),
+    kabupaten: str | None = Query(default=None),
     user=Depends(require_roles("admin_pemda", "admin_pemprov")),
 ):
-    return {"status": "success", "source": "file", "data": load_json_file(PATH_STUNTING)}
+    return {"status": "success", "source": "file", "data": filter_rows(load_json_file(PATH_STUNTING), tahun, kabupaten)}
 
 @router.get("/kemiskinan")
-def get_kemiskinan():
-    return {"status": "success", "source": "excel", "data": load_json_file(PATH_KEMISKINAN)}
+def get_kemiskinan(
+    tahun: int | None = Query(default=None, ge=2000, le=2100),
+    kabupaten: str | None = Query(default=None),
+):
+    return {"status": "success", "source": "excel", "data": filter_rows(load_json_file(PATH_KEMISKINAN), tahun, kabupaten)}
 
 
 @router.get("/kemiskinan-lokal")
 def get_kemiskinan_lokal(
+    tahun: int | None = Query(default=None, ge=2000, le=2100),
+    kabupaten: str | None = Query(default=None),
     user=Depends(require_roles("admin_pemda", "admin_pemprov")),
 ):
-    return {"status": "success", "source": "file", "data": load_json_file(PATH_KEMISKINAN)}
+    return {"status": "success", "source": "file", "data": filter_rows(load_json_file(PATH_KEMISKINAN), tahun, kabupaten)}
 
 
 @router.get("/stunting-bps")

@@ -67,6 +67,9 @@ not the reporter's NIK. The selected district code must match its location name.
 On startup, reports with recognized legacy district names are re-routed to that
 district; ambiguous or unrecognized locations are left unchanged.
 
+A report is accepted when at least one prospective spouse is under 19 years old.
+Reports where both prospective spouses are 19 or older are rejected.
+
 ## Tests
 
 Run isolated authentication tests without connecting to the configured database or SMTP server:

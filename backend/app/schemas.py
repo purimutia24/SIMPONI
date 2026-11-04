@@ -86,6 +86,8 @@ class UserResponse(BaseModel):
     nip: Optional[str] = None
     email: str
     full_name: str
+    phone: Optional[str] = None
+    profile_photo: Optional[str] = None
     role: str
     kode_kabupaten: Optional[int] = None
     is_active: bool
@@ -153,6 +155,8 @@ class ReportResponse(BaseModel):
     pelapor_email: str
     pelapor_domisili: str
     hubungan_pelapor: str
+    nama_perempuan: Optional[str] = None
+    nama_laki_laki: Optional[str] = None
     usia_perempuan: str
     usia_laki_laki: str
     status_pendidikan: str

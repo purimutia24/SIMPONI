@@ -52,6 +52,8 @@ class ReportUploadTests(unittest.TestCase):
         self,
         lokasi_kabupaten="Kabupaten Bogor",
         kode_kabupaten=3201,
+        usia_perempuan="17 tahun",
+        usia_laki_laki="17 tahun",
         description=(
             "Laporan uji dengan kronologi yang cukup panjang untuk memenuhi "
             "batas minimum seratus karakter secara benar."
@@ -71,8 +73,8 @@ class ReportUploadTests(unittest.TestCase):
             pelapor_email="reporter@example.test",
             pelapor_domisili="Kabupaten Bogor",
             hubungan_pelapor="Keluarga",
-            usia_perempuan="17 tahun",
-            usia_laki_laki="17 tahun",
+            usia_perempuan=usia_perempuan,
+            usia_laki_laki=usia_laki_laki,
             status_pendidikan="SMA",
             lokasi_kabupaten=lokasi_kabupaten,
             kode_kabupaten=kode_kabupaten,
@@ -176,6 +178,53 @@ class ReportUploadTests(unittest.TestCase):
         )
 
         self.assertEqual(report.description, chronology)
+
+    def test_report_is_accepted_when_only_one_age_is_under_nineteen(self):
+        report = self.create_report(
+            usia_perempuan="18 tahun",
+            usia_laki_laki="25 tahun",
+            foto_bukti_awal=UploadFile(
+                file=io.BytesIO(b"evidence"),
+                filename="bukti.jpg",
+            ),
+        )
+        self.assertEqual(report.usia_perempuan, "18 tahun")
+        self.assertEqual(report.usia_laki_laki, "25 tahun")
+
+    def test_report_is_rejected_when_both_ages_are_at_least_nineteen(self):
+        with self.assertRaises(HTTPException) as error:
+            reports.create_report(
+                pelapor_telepon="081234567890",
+                pelapor_email="reporter@example.test",
+                pelapor_domisili="Kabupaten Bogor",
+                hubungan_pelapor="Keluarga",
+                usia_perempuan="19 tahun",
+                usia_laki_laki="20 tahun",
+                status_pendidikan="SMA",
+                lokasi_kabupaten="Kabupaten Bogor",
+                kode_kabupaten=3201,
+                lokasi_kecamatan_desa="Sukamaju",
+                waktu_rencana_akad="2026-10-17",
+                faktor_pendorong="Faktor keluarga",
+                description=(
+                    "Laporan ini tidak boleh tersimpan karena kedua calon mempelai "
+                    "sudah berusia minimal sembilan belas tahun."
+                ),
+                pernyataan_benar=True,
+                setuju_pemrosesan=True,
+                foto_bukti_awal=UploadFile(
+                    file=io.BytesIO(b"evidence"),
+                    filename="bukti.jpg",
+                ),
+                foto_bukti=None,
+                dokumen_pendukung_lain=None,
+                dokumen_pendukung=None,
+                db=self.db,
+                user=self.user,
+            )
+
+        self.assertEqual(error.exception.status_code, 422)
+        self.assertEqual(self.db.query(Report).count(), 0)
 
     def test_hundred_word_chronology_is_accepted(self):
         chronology = " ".join(["kronologi"] * 100)

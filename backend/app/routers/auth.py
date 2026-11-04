@@ -6,11 +6,12 @@ import logging
 import os
 import secrets
 import smtplib
+from pathlib import Path
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -24,6 +25,7 @@ from app.security import create_access_token, get_access_token_expiry, hash_pass
 load_dotenv()
 router = APIRouter(prefix="/auth", tags=["Autentikasi"])
 logger = logging.getLogger(__name__)
+PROFILE_MAX_UPLOAD_BYTES = 2 * 1024 * 1024
 
 
 def send_email(recipient: str, subject: str, body: str) -> None:
@@ -312,3 +314,107 @@ def logout(
 @router.get("/me", response_model=UserResponse)
 def me(user: User = Depends(get_current_user)):
     return serialize_user(user)
+
+
+async def _update_profile(
+    full_name: str | None = None,
+    phone: str = "",
+    email: str | None = None,
+    profile_photo: UploadFile | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not full_name or len(full_name.strip()) < 2:
+        raise HTTPException(status_code=422, detail="Nama lengkap wajib diisi minimal 2 karakter")
+    if not email or len(email.strip()) < 3:
+        raise HTTPException(status_code=422, detail="Email wajib diisi")
+
+    normalized_email = email.strip().lower()
+    existing = db.scalar(
+        select(User).where(User.email == normalized_email, User.id != user.id)
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Email sudah digunakan akun lain")
+
+    user.full_name = full_name.strip()
+    user.phone = phone.strip() or None
+    user.email = normalized_email
+
+    if isinstance(profile_photo, UploadFile) and profile_photo.filename:
+        content = await profile_photo.read(PROFILE_MAX_UPLOAD_BYTES + 1)
+        if len(content) > PROFILE_MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="Ukuran foto maksimal 2 MB")
+        extension = Path(profile_photo.filename).suffix.lower()
+        if extension not in {".jpg", ".jpeg", ".png", ".webp"}:
+            raise HTTPException(status_code=422, detail="Foto harus JPG, PNG, atau WEBP")
+        upload_dir = Path(__file__).resolve().parents[2] / "uploads"
+        upload_dir.mkdir(exist_ok=True)
+        filename = f"profile-{user.id}-{secrets.token_hex(12)}{extension}"
+        (upload_dir / filename).write_bytes(content)
+        user.profile_photo = f"uploads/{filename}"
+
+    db.commit()
+    db.refresh(user)
+    return serialize_user(user)
+
+
+async def _parse_profile_request(request: Request) -> tuple[str | None, str, str | None, UploadFile | None]:
+    content_type = request.headers.get("content-type", "").lower()
+    if content_type.startswith("multipart/form-data"):
+        form = await request.form()
+        full_name = form.get("full_name") or form.get("name")
+        phone = form.get("phone") or ""
+        email = form.get("email")
+        profile_photo = form.get("profile_photo") or form.get("photo")
+    elif content_type.startswith("application/json"):
+        try:
+            payload = await request.json()
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail="Payload profil tidak valid") from error
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=422, detail="Payload profil harus berupa objek JSON")
+        full_name = payload.get("full_name") or payload.get("name")
+        phone = payload.get("phone") or payload.get("telepon") or ""
+        email = payload.get("email")
+        profile_photo = None
+    else:
+        raise HTTPException(
+            status_code=415,
+            detail="Profil harus dikirim sebagai multipart/form-data atau application/json",
+        )
+
+    return full_name, phone, email, profile_photo
+
+
+async def _handle_profile_update(
+    request: Request,
+    user: User,
+    db: Session,
+):
+    full_name, phone, email, profile_photo = await _parse_profile_request(request)
+    return await _update_profile(
+        full_name,
+        phone,
+        email,
+        profile_photo,
+        user,
+        db,
+    )
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_profile(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return await _handle_profile_update(request, user, db)
+
+
+@router.put("/profile", response_model=UserResponse)
+async def update_profile_legacy(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return await _handle_profile_update(request, user, db)
