@@ -340,7 +340,7 @@ async def _update_profile(
     user.phone = phone.strip() or None
     user.email = normalized_email
 
-    if isinstance(profile_photo, UploadFile) and profile_photo.filename:
+    if profile_photo is not None and getattr(profile_photo, "filename", None):
         content = await profile_photo.read(PROFILE_MAX_UPLOAD_BYTES + 1)
         if len(content) > PROFILE_MAX_UPLOAD_BYTES:
             raise HTTPException(status_code=413, detail="Ukuran foto maksimal 2 MB")
