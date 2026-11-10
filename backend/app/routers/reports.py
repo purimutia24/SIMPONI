@@ -22,6 +22,8 @@ router = APIRouter(prefix="/reports", tags=["Laporan"])
 UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads"
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024
 MINOR_AGE = 19
+ALLOWED_PHOTO_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+ALLOWED_DOCUMENT_EXTENSIONS = {".pdf", ".doc", ".docx", *ALLOWED_PHOTO_EXTENSIONS}
 
 
 def age_from_value(value: str) -> int | None:
@@ -38,7 +40,7 @@ def load_report(db: Session, report_id: int) -> Report:
     return report
 
 
-def save_upload(upload: UploadFile | None) -> str | None:
+def save_upload(upload: UploadFile | None, allowed_extensions: set[str]) -> str | None:
     if not upload or not upload.filename:
         return None
 
@@ -52,8 +54,11 @@ def save_upload(upload: UploadFile | None) -> str | None:
 
     UPLOAD_DIR.mkdir(exist_ok=True)
     extension = Path(upload.filename).suffix.lower()
-    if extension and not extension[1:].isalnum():
-        extension = ""
+    if extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Jenis file tidak didukung. Gunakan: {', '.join(sorted(allowed_extensions))}",
+        )
     unique_name = f"{uuid.uuid4().hex}{extension}"
     (UPLOAD_DIR / unique_name).write_bytes(content)
     return f"uploads/{unique_name}"
@@ -83,13 +88,32 @@ def create_report(
     dokumen_pendukung_lain: UploadFile = File(None),
     dokumen_pendukung: UploadFile = File(None),
     db: Session = Depends(get_db),
-    user: User = Depends(require_roles("public"))
+    user: User = Depends(require_roles("public")),
+    kerahasiaan: str = Form("rahasia"),
+    pelapor_nama: str = Form(""),
 ):
-    if not user.full_name.strip() or not user.nik or not user.nik.isdigit() or len(user.nik) != 16:
+    if not isinstance(kerahasiaan, str):
+        kerahasiaan = "rahasia"
+    if not isinstance(pelapor_nama, str):
+        pelapor_nama = ""
+    if not isinstance(nama_perempuan, str):
+        nama_perempuan = ""
+    if not isinstance(nama_laki_laki, str):
+        nama_laki_laki = ""
+    reporter_name = pelapor_nama.strip() or user.full_name.strip()
+    if len(reporter_name) < 3 or not user.nik or not user.nik.isdigit() or len(user.nik) != 16:
         raise HTTPException(
             status_code=422,
             detail="Profil akun belum memiliki nama dan NIK yang valid",
         )
+    if kerahasiaan not in {"anonim", "rahasia", "biasa"}:
+        raise HTTPException(status_code=422, detail="Opsi kerahasiaan tidak valid")
+    for field_name, value in (
+        ("Nama perempuan", nama_perempuan),
+        ("Nama laki-laki", nama_laki_laki),
+    ):
+        if value.strip() and len(value.strip()) < 3:
+            raise HTTPException(status_code=422, detail=f"{field_name} minimal 3 karakter")
     if kode_kabupaten not in DISTRICT_NAMES:
         raise HTTPException(
             status_code=422,
@@ -151,26 +175,52 @@ def create_report(
                     detail="Ukuran setiap file maksimal 2 MB",
                 )
 
-    foto_bukti_awal_path = save_upload(photo_upload)
-    dokumen_pendukung_path = save_upload(document_upload)
+    saved_paths: list[Path] = []
+    try:
+        if photo_upload and photo_upload.filename:
+            foto_bukti_awal_path = save_upload(photo_upload, ALLOWED_PHOTO_EXTENSIONS)
+            saved_paths.append(UPLOAD_DIR / Path(foto_bukti_awal_path).name)
+        else:
+            foto_bukti_awal_path = None
+        if document_upload and document_upload.filename:
+            dokumen_pendukung_path = save_upload(document_upload, ALLOWED_DOCUMENT_EXTENSIONS)
+            saved_paths.append(UPLOAD_DIR / Path(dokumen_pendukung_path).name)
+        else:
+            dokumen_pendukung_path = None
+    except OSError as error:
+        for path in saved_paths:
+            path.unlink(missing_ok=True)
+        raise HTTPException(status_code=503, detail="Bukti gagal disimpan di server") from error
 
     nama_perempuan_value = nama_perempuan.strip() if isinstance(nama_perempuan, str) else ""
     nama_laki_laki_value = nama_laki_laki.strip() if isinstance(nama_laki_laki, str) else ""
     report = Report(
-        reporter_id=user.id, kode_kabupaten=kode_kabupaten, pelapor_nama=user.full_name.strip(),
-        pelapor_nik=user.nik, pelapor_telepon=pelapor_telepon, pelapor_email=pelapor_email, pelapor_domisili=pelapor_domisili,
+        reporter_id=None if kerahasiaan == "anonim" else user.id,
+        kode_kabupaten=kode_kabupaten,
+        pelapor_nama="Anonim" if kerahasiaan == "anonim" else reporter_name,
+        pelapor_nik="0000000000000000" if kerahasiaan == "anonim" else user.nik,
+        pelapor_telepon="" if kerahasiaan == "anonim" else pelapor_telepon,
+        pelapor_email="" if kerahasiaan == "anonim" else pelapor_email,
+        pelapor_domisili="" if kerahasiaan == "anonim" else pelapor_domisili,
         hubungan_pelapor=hubungan_pelapor, nama_perempuan=nama_perempuan_value or None,
         nama_laki_laki=nama_laki_laki_value or None, usia_perempuan=usia_perempuan,
         usia_laki_laki=usia_laki_laki, status_pendidikan=status_pendidikan,
         lokasi_kabupaten=lokasi_kabupaten, lokasi_kecamatan_desa=lokasi_kecamatan_desa, waktu_rencana_akad=waktu_rencana_akad,
         faktor_pendorong=faktor_pendorong, description=description.strip(),
         foto_bukti_awal=foto_bukti_awal_path, dokumen_pendukung=dokumen_pendukung_path,
-        pernyataan_benar=pernyataan_benar, setuju_pemrosesan=setuju_pemrosesan
+        pernyataan_benar=pernyataan_benar, setuju_pemrosesan=setuju_pemrosesan,
+        kerahasiaan=kerahasiaan,
     )
-    db.add(report)
-    db.flush()
-    db.add(ReportHistory(report_id=report.id, actor_id=user.id, new_status="Diajukan", note="Laporan dibuat oleh pelapor"))
-    db.commit()
+    try:
+        db.add(report)
+        db.flush()
+        db.add(ReportHistory(report_id=report.id, actor_id=user.id, new_status="Diajukan", note="Laporan dibuat oleh pelapor"))
+        db.commit()
+    except Exception:
+        db.rollback()
+        for path in saved_paths:
+            path.unlink(missing_ok=True)
+        raise
     return load_report(db, report.id)
 
 

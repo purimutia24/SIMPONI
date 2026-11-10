@@ -1,0 +1,383 @@
+{
+  "base_url": "http://127.0.0.1:8000",
+  "generated_at": "2026-11-04T14:23:33Z",
+  "include_write": false,
+  "total": 23,
+  "passed": 23,
+  "failed": 0,
+  "results": [
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/statistik/peta-pernikahan-dini",
+      "parameters": {},
+      "status": 200,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 1588.55,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "type",
+          "features"
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/statistik/pernikahan-dini",
+      "parameters": {},
+      "status": 200,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 7.73,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "status",
+          "data"
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/statistik/putus-sekolah",
+      "parameters": {},
+      "status": 200,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 4.97,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "status",
+          "data"
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/statistik/ringkasan",
+      "parameters": {},
+      "status": 200,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 6.7,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "status",
+          "total",
+          "by_year",
+          "by_region"
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/statistik/stunting",
+      "parameters": {},
+      "status": 200,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 3.93,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "status",
+          "source",
+          "data"
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/statistik/stunting-lokal",
+      "parameters": {},
+      "status": 401,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 8.15,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "detail"
+        ],
+        "detail": "Kirim header Authorization dengan format: Bearer <access_token> dari response login/register"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/statistik/kemiskinan",
+      "parameters": {},
+      "status": 200,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 5.13,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "status",
+          "source",
+          "data"
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/statistik/kemiskinan-lokal",
+      "parameters": {},
+      "status": 401,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 6.34,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "detail"
+        ],
+        "detail": "Kirim header Authorization dengan format: Bearer <access_token> dari response login/register"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/statistik/stunting-bps",
+      "parameters": {},
+      "status": 401,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 4.31,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "detail"
+        ],
+        "detail": "Kirim header Authorization dengan format: Bearer <access_token> dari response login/register"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/statistik/kemiskinan-bps",
+      "parameters": {},
+      "status": 401,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 7.37,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "detail"
+        ],
+        "detail": "Kirim header Authorization dengan format: Bearer <access_token> dari response login/register"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/auth/me",
+      "parameters": {},
+      "status": 401,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 7.41,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "detail"
+        ],
+        "detail": "Kirim header Authorization dengan format: Bearer <access_token> dari response login/register"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/reports",
+      "parameters": {},
+      "status": 401,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 6.43,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "detail"
+        ],
+        "detail": "Kirim header Authorization dengan format: Bearer <access_token> dari response login/register"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/reports/mine",
+      "parameters": {},
+      "status": 401,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 5.47,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "detail"
+        ],
+        "detail": "Kirim header Authorization dengan format: Bearer <access_token> dari response login/register"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/reports/1",
+      "parameters": {},
+      "status": 401,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 4.29,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "detail"
+        ],
+        "detail": "Kirim header Authorization dengan format: Bearer <access_token> dari response login/register"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/admin/dashboard",
+      "parameters": {},
+      "status": 401,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 6.35,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "detail"
+        ],
+        "detail": "Kirim header Authorization dengan format: Bearer <access_token> dari response login/register"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/admin/dashboard/rapor-kabupaten",
+      "parameters": {},
+      "status": 401,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 4.2,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "detail"
+        ],
+        "detail": "Kirim header Authorization dengan format: Bearer <access_token> dari response login/register"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/admin/officers",
+      "parameters": {},
+      "status": 401,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 4.95,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "detail"
+        ],
+        "detail": "Kirim header Authorization dengan format: Bearer <access_token> dari response login/register"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/admin/provincial-admins",
+      "parameters": {},
+      "status": 401,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 6.29,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "detail"
+        ],
+        "detail": "Kirim header Authorization dengan format: Bearer <access_token> dari response login/register"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/admin/export.csv",
+      "parameters": {},
+      "status": 401,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 5.09,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "detail"
+        ],
+        "detail": "Kirim header Authorization dengan format: Bearer <access_token> dari response login/register"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/admin/export.xlsx",
+      "parameters": {},
+      "status": 401,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 5.17,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "detail"
+        ],
+        "detail": "Kirim header Authorization dengan format: Bearer <access_token> dari response login/register"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/",
+      "parameters": {},
+      "status": 200,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 4.56,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "status",
+          "app",
+          "message"
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/health",
+      "parameters": {},
+      "status": 200,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 6.91,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "status",
+          "database"
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/uploads/1",
+      "parameters": {},
+      "status": 404,
+      "ok": true,
+      "server_error": false,
+      "elapsed_ms": 3.47,
+      "content_type": "",
+      "response": {
+        "keys": [
+          "detail"
+        ],
+        "detail": "File tidak ditemukan"
+      }
+    }
+  ]
+}

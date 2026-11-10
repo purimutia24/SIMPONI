@@ -11,9 +11,13 @@ from pathlib import Path
 from app.database import Base, SessionLocal, engine
 from app.models import User
 import app.models
-from app.routers import admin, auth, reports, statistik
+from app.routers import admin, auth, news, reports, statistik
 from app.report_scope import backfill_report_district_codes
 from app.security import hash_password
+
+is_production = os.getenv("APP_ENV", os.getenv("ENVIRONMENT", "development")).lower() in {
+    "production", "prod"
+}
 
 app = FastAPI(
     title="SIMPONI — Sistem Pelaporan Pernikahan Dini",
@@ -22,8 +26,8 @@ app = FastAPI(
         "pernikahan dini di Jawa Barat. Melayani Masyarakat, Admin Pemda, dan Admin Pemprov."
     ),
     version="2.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=None if is_production else "/docs",
+    redoc_url=None if is_production else "/redoc",
 )
 
 # ─── Middleware ────────────────────────────────────────────────────────────────
@@ -69,6 +73,17 @@ def ensure_report_photo_column(database_engine=engine):
                 conn.execute(text(
                     f"ALTER TABLE reports ADD COLUMN {column} VARCHAR(150)"
                 ))
+    report_columns = {
+        column["name"] for column in inspect(database_engine).get_columns("reports")
+    }
+    if "kerahasiaan" not in report_columns:
+        with database_engine.begin() as conn:
+            conn.execute(text(
+                "ALTER TABLE reports ADD COLUMN kerahasiaan VARCHAR(20) NOT NULL DEFAULT 'rahasia'"
+            ))
+    if "wilayah_id" not in report_columns:
+        with database_engine.begin() as conn:
+            conn.execute(text("ALTER TABLE reports ADD COLUMN wilayah_id VARCHAR(36) NULL"))
 
 
 # ─── Router ───────────────────────────────────────────────────────────────────
@@ -76,6 +91,7 @@ app.include_router(statistik.router, prefix="/api/v1/statistik", tags=["Statisti
 app.include_router(auth.router,      prefix="/api/v1",           tags=["Autentikasi"])
 app.include_router(reports.router,   prefix="/api/v1",           tags=["Laporan"])
 app.include_router(admin.router,     prefix="/api/v1",           tags=["Administrasi"])
+app.include_router(news.router,      prefix="/api/v1",           tags=["Berita"])
 
 
 # ─── Startup ──────────────────────────────────────────────────────────────────

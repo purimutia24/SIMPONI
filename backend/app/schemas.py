@@ -103,7 +103,7 @@ class TokenResponse(BaseModel):
 
 
 class ReportCreate(BaseModel):
-    pelapor_nama: str = Field(max_length=150)
+    pelapor_nama: str = Field(min_length=3, max_length=150)
     pelapor_nik: str = Field(min_length=16, max_length=16)
     pelapor_telepon: str = Field(max_length=20)
     pelapor_email: str = Field(max_length=255)
@@ -119,6 +119,7 @@ class ReportCreate(BaseModel):
     description: str = Field(min_length=100, max_length=10000)
     pernyataan_benar: bool
     setuju_pemrosesan: bool
+    kerahasiaan: Literal["anonim", "rahasia", "biasa"] = "rahasia"
 
 
 ReportStatus = Literal["Diajukan", "Diverifikasi", "Diproses", "Selesai", "Ditolak"]
@@ -147,7 +148,7 @@ class HistoryResponse(BaseModel):
 
 class ReportResponse(BaseModel):
     id: int
-    reporter_id: int
+    reporter_id: Optional[int] = None
     kode_kabupaten: int
     pelapor_nama: str
     pelapor_nik: str
@@ -169,6 +170,7 @@ class ReportResponse(BaseModel):
     foto_bukti_awal: Optional[str] = None
     pernyataan_benar: bool
     setuju_pemrosesan: bool
+    kerahasiaan: Literal["anonim", "rahasia", "biasa"] = "rahasia"
     status: str
     created_at: datetime
     updated_at: datetime

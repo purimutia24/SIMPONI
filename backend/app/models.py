@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import uuid
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -43,11 +44,27 @@ class AccessToken(Base):
 	revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class Wilayah(Base):
+	"""Hierarchical master data so districts can be added for any province."""
+	__tablename__ = "wilayah"
+
+	id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+	code: Mapped[int | None] = mapped_column(Integer, unique=True, index=True, nullable=True)
+	name: Mapped[str] = mapped_column("nama", String(150))
+	level: Mapped[str] = mapped_column("tingkat", String(20), index=True)
+	parent_id: Mapped[str | None] = mapped_column(
+		ForeignKey("wilayah.id", ondelete="RESTRICT"), nullable=True, index=True
+	)
+	parent = relationship("Wilayah", remote_side=[id], back_populates="children")
+	children = relationship("Wilayah", back_populates="parent")
+
+
 class Report(Base):
 	__tablename__ = "reports"
 
 	id: Mapped[int] = mapped_column(Integer, primary_key=True)
-	reporter_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+	reporter_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+	wilayah_id: Mapped[str | None] = mapped_column(ForeignKey("wilayah.id"), nullable=True, index=True)
 	kode_kabupaten: Mapped[int] = mapped_column(Integer, index=True)
 	pelapor_nama: Mapped[str] = mapped_column(String(150))
 	pelapor_nik: Mapped[str] = mapped_column(String(16))
@@ -69,11 +86,13 @@ class Report(Base):
 	dokumen_pendukung: Mapped[str | None] = mapped_column(String(255), nullable=True)
 	pernyataan_benar: Mapped[bool] = mapped_column(Boolean, default=False)
 	setuju_pemrosesan: Mapped[bool] = mapped_column(Boolean, default=False)
+	kerahasiaan: Mapped[str] = mapped_column(String(20), default="rahasia", index=True)
 	status: Mapped[str] = mapped_column(String(20), default="Diajukan", index=True)
 	created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
 	updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 	reporter = relationship("User", back_populates="reports")
+	wilayah = relationship("Wilayah")
 	histories = relationship("ReportHistory", back_populates="report", cascade="all, delete-orphan")
 
 

@@ -93,10 +93,10 @@ def fetch_bps(indicator: str, configured_url: str | None, variable: str | None):
         raise HTTPException(status_code=502, detail=f"BPS mengembalikan status tidak berhasil untuk {indicator}: {payload.get('message', payload.get('status'))}")
     return {"status": "success", "source": "BPS API", "indicator": indicator, "data": payload}
 
-@router.get("/peta-pernikahan-dini")
-def get_peta_pernikahan_dini(
-    tahun: int | None = Query(default=None, ge=2000, le=2100),
-    kabupaten: str | None = Query(default=None),
+@lru_cache(maxsize=32)
+def _build_peta_pernikahan_dini(
+    tahun: int | None = None,
+    kabupaten: str | None = None,
 ):
     geojson = load_json_file(PATH_GEOJSON)
     rows = load_json_file(PATH_PERNIKAHAN)
@@ -131,7 +131,6 @@ def get_peta_pernikahan_dini(
         except (TypeError, ValueError):
             continue
 
-    # Rata-rata mencakup seluruh wilayah GeoJSON, termasuk wilayah tanpa kasus.
     rata_rata = (
         sum(totals.get(kode, 0) for kode in valid_codes) / len(valid_codes)
         if valid_codes
@@ -140,14 +139,12 @@ def get_peta_pernikahan_dini(
 
     for feature in features:
         properties = feature.setdefault("properties", {})
-
         try:
             kode = int(properties.get("ID_KAB"))
         except (TypeError, ValueError):
             kode = None
 
         jumlah = totals.get(kode, 0) if kode is not None else 0
-
         if jumlah > rata_rata:
             tingkat_risiko = "tinggi"
         elif rata_rata > 0 and jumlah >= rata_rata * 0.5:
@@ -166,10 +163,15 @@ def get_peta_pernikahan_dini(
             "tingkat_risiko": tingkat_risiko,
         })
 
-    return {
-        "type": "FeatureCollection",
-        "features": features,
-    }
+    return {"type": "FeatureCollection", "features": features}
+
+
+@router.get("/peta-pernikahan-dini")
+def get_peta_pernikahan_dini(
+    tahun: int | None = Query(default=None, ge=2000, le=2100),
+    kabupaten: str | None = Query(default=None),
+):
+    return _build_peta_pernikahan_dini(tahun, kabupaten)
 
 @router.get("/pernikahan-dini")
 def get_pernikahan_dini(

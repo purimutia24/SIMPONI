@@ -8,10 +8,10 @@ import secrets
 import smtplib
 from pathlib import Path
 from urllib.parse import quote
-from urllib.request import Request, urlopen
+from urllib.request import Request as UrlRequest, urlopen
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -36,7 +36,7 @@ def send_email(recipient: str, subject: str, body: str) -> None:
         relay_secret = os.getenv("EMAIL_WEBHOOK_SECRET")
         if not relay_url or not relay_secret:
             raise RuntimeError("EMAIL_WEBHOOK_URL dan EMAIL_WEBHOOK_SECRET harus dikonfigurasi")
-        request = Request(
+        request = UrlRequest(
             relay_url,
             data=json.dumps({
                 "secret": relay_secret,
@@ -58,7 +58,7 @@ def send_email(recipient: str, subject: str, body: str) -> None:
         sender = os.getenv("EMAIL_FROM", "")
         if not api_key or not sender:
             raise RuntimeError("RESEND_API_KEY dan EMAIL_FROM harus dikonfigurasi")
-        request = Request(
+        request = UrlRequest(
             "https://api.resend.com/emails",
             data=json.dumps({
                 "from": sender,
@@ -152,7 +152,11 @@ def store_access_token(db: Session, user: User) -> str:
 
 
 @router.post("/register", response_model=VerificationResponse, status_code=201)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+def register(
+    payload: RegisterRequest,
+    db: Session = Depends(get_db),
+    background_tasks: BackgroundTasks = None,
+):
     kode_kabupaten = int(payload.nik[:4])
     if not 3201 <= kode_kabupaten <= 3279:
         raise HTTPException(status_code=422, detail="NIK bukan wilayah Jawa Barat yang didukung")
@@ -173,13 +177,15 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     db.add(user)
     verification_token = user.verification_token
     user.verification_token = hash_token(verification_token)
-    try:
-        send_verification_email(user.email, verification_token)
-    except (OSError, smtplib.SMTPException, ValueError, RuntimeError) as error:
-        db.rollback()
-        logger.exception("Gagal mengirim email verifikasi")
-        raise HTTPException(status_code=503, detail="Email verifikasi gagal dikirim") from error
     db.commit()
+    if background_tasks is not None:
+        background_tasks.add_task(send_verification_email, user.email, verification_token)
+    else:
+        try:
+            send_verification_email(user.email, verification_token)
+        except (OSError, smtplib.SMTPException, ValueError, RuntimeError) as error:
+            logger.exception("Gagal mengirim email verifikasi")
+            raise HTTPException(status_code=503, detail="Email verifikasi gagal dikirim") from error
     return VerificationResponse(
         status="pending",
         message="Registrasi berhasil. Periksa email untuk memverifikasi akun sebelum login.",
@@ -226,7 +232,11 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
 
 @router.post("/resend-verification", response_model=VerificationResponse)
-def resend_verification(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def resend_verification(
+    payload: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+    background_tasks: BackgroundTasks = None,
+):
     response = VerificationResponse(
         status="success",
         message="Jika akun membutuhkan verifikasi, email verifikasi telah dikirim ulang.",
@@ -238,13 +248,15 @@ def resend_verification(payload: ForgotPasswordRequest, db: Session = Depends(ge
     verification_token = secrets.token_urlsafe(32)
     user.verification_token = hash_token(verification_token)
     user.verification_expires_at = utcnow() + timedelta(minutes=30)
-    try:
-        send_verification_email(user.email, verification_token)
-    except (OSError, smtplib.SMTPException, ValueError, RuntimeError):
-        db.rollback()
-        logger.exception("Gagal mengirim ulang email verifikasi")
-        return response
     db.commit()
+    if background_tasks is not None:
+        background_tasks.add_task(send_verification_email, user.email, verification_token)
+    else:
+        try:
+            send_verification_email(user.email, verification_token)
+        except (OSError, smtplib.SMTPException, ValueError, RuntimeError):
+            logger.exception("Gagal mengirim ulang email verifikasi")
+            return response
     return response
 
 

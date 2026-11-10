@@ -78,6 +78,16 @@ Run isolated authentication tests without connecting to the configured database 
 python -m unittest tests.test_auth_flow
 ```
 
+## Berita publik
+
+`GET /api/v1/news?limit=6` mengambil berita terbaru dari Google News RSS
+dengan topik pernikahan dini, perkawinan anak, dan dispensasi kawin. Response
+hanya berisi metadata dan cuplikan feed (`title`, `link`, `source`,
+`description`, `published_at`, dan `image`); detail artikel tetap dibuka dari
+`link` sumber asli. URL dideduplikasi dan hasil diurutkan dari yang terbaru.
+Timeout feed dapat diubah melalui `NEWS_REQUEST_TIMEOUT`. CORS mengikuti
+`FRONTEND_ORIGINS` yang juga digunakan endpoint lain.
+
 Run the full API integration suite in an isolated temporary database and port:
 
 ```bash
@@ -97,3 +107,25 @@ The report should show zero failures for the summary and map endpoints. Locust
 also marks invalid JSON or an unexpected response shape as a failure. The map
 response is large and may take several seconds; increase user count gradually
 and run load tests only against a development or test server you control.
+
+## Endpoint smoke test
+
+Jalankan API terlebih dahulu, lalu dari direktori `backend/`:
+
+```bash
+python scripts/test_endpoints.py
+```
+
+Script mengambil daftar endpoint dari `/openapi.json`, menjalankan endpoint
+`GET`, dan mencatat method, endpoint, parameter, status HTTP, waktu respons,
+content type, serta ringkasan response ke `endpoint-report.json`. Token dapat
+diberikan melalui `--token "$API_TOKEN"` atau environment variable `API_TOKEN`.
+
+Untuk mencoba endpoint mutasi juga, gunakan hanya pada database pengujian:
+
+```bash
+python scripts/test_endpoints.py --include-write --output endpoint-report.json --csv endpoint-report.csv
+```
+
+Mode `--include-write` dapat membuat, mengubah, atau menghapus data. Response
+tidak dicetak penuh dan nilai sensitif seperti token/password disamarkan.
