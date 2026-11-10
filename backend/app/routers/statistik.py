@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 import json
 import os
 from copy import deepcopy
@@ -20,6 +20,7 @@ PATH_PUTUS_SEKOLAH = DATA_DIR / "putus_sekolah.json"
 PATH_STUNTING = DATA_DIR / "stunting.json"
 PATH_KEMISKINAN = DATA_DIR / "kemiskinan.json"
 PATH_GEOJSON = DATA_DIR / "Jabar_By_Kab.geojson"
+MAP_SIMPLIFICATION_TOLERANCE = 0.0005
 BPS_API_KEY = os.getenv("BPS_API_KEY")
 BPS_BASE_URL = os.getenv("BPS_BASE_URL", "https://webapi.bps.go.id/v1/api")
 BPS_STUNTING_URL = os.getenv("BPS_STUNTING_URL")
@@ -93,12 +94,104 @@ def fetch_bps(indicator: str, configured_url: str | None, variable: str | None):
         raise HTTPException(status_code=502, detail=f"BPS mengembalikan status tidak berhasil untuk {indicator}: {payload.get('message', payload.get('status'))}")
     return {"status": "success", "source": "BPS API", "indicator": indicator, "data": payload}
 
+
+def _point_line_distance_squared(point, start, end):
+    dx = end[0] - start[0]
+    dy = end[1] - start[1]
+    if dx == 0 and dy == 0:
+        return (point[0] - start[0]) ** 2 + (point[1] - start[1]) ** 2
+
+    projection = max(
+        0,
+        min(
+            1,
+            ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy)
+            / (dx * dx + dy * dy),
+        ),
+    )
+    nearest = (start[0] + projection * dx, start[1] + projection * dy)
+    return (point[0] - nearest[0]) ** 2 + (point[1] - nearest[1]) ** 2
+
+
+def _simplify_line(points, tolerance):
+    if len(points) <= 2:
+        return points
+
+    tolerance_squared = tolerance * tolerance
+    kept = {0, len(points) - 1}
+    pending = [(0, len(points) - 1)]
+    while pending:
+        first, last = pending.pop()
+        max_distance = tolerance_squared
+        farthest = None
+        for index in range(first + 1, last):
+            distance = _point_line_distance_squared(
+                points[index], points[first], points[last]
+            )
+            if distance > max_distance:
+                max_distance = distance
+                farthest = index
+
+        if farthest is not None:
+            kept.add(farthest)
+            pending.extend(((first, farthest), (farthest, last)))
+
+    return [points[index] for index in sorted(kept)]
+
+
+def _simplify_ring(ring, tolerance=MAP_SIMPLIFICATION_TOLERANCE):
+    if len(ring) <= 4 or ring[0] != ring[-1]:
+        return ring
+
+    open_ring = ring[:-1]
+    split = max(
+        range(1, len(open_ring)),
+        key=lambda index: (
+            (open_ring[index][0] - open_ring[0][0]) ** 2
+            + (open_ring[index][1] - open_ring[0][1]) ** 2
+        ),
+    )
+    first_half = _simplify_line(open_ring[: split + 1], tolerance)
+    second_half = _simplify_line(
+        open_ring[split:] + [open_ring[0]], tolerance
+    )
+    simplified = first_half[:-1] + second_half[:-1]
+    if len(simplified) < 3:
+        return ring
+    return simplified + [simplified[0]]
+
+
+def _simplify_geometry(geometry):
+    if not geometry:
+        return
+
+    geometry_type = geometry.get("type")
+    coordinates = geometry.get("coordinates", [])
+    if geometry_type == "Polygon":
+        geometry["coordinates"] = [
+            _simplify_ring(ring) for ring in coordinates
+        ]
+    elif geometry_type == "MultiPolygon":
+        geometry["coordinates"] = [
+            [_simplify_ring(ring) for ring in polygon]
+            for polygon in coordinates
+        ]
+
+
+@lru_cache(maxsize=1)
+def _load_simplified_geojson():
+    geojson = load_json_file(PATH_GEOJSON)
+    for feature in geojson.get("features", []):
+        _simplify_geometry(feature.get("geometry"))
+    return geojson
+
+
 @lru_cache(maxsize=32)
 def _build_peta_pernikahan_dini(
     tahun: int | None = None,
     kabupaten: str | None = None,
 ):
-    geojson = load_json_file(PATH_GEOJSON)
+    geojson = deepcopy(_load_simplified_geojson())
     rows = load_json_file(PATH_PERNIKAHAN)
     totals = {}
 
@@ -168,9 +261,11 @@ def _build_peta_pernikahan_dini(
 
 @router.get("/peta-pernikahan-dini")
 def get_peta_pernikahan_dini(
+    response: Response,
     tahun: int | None = Query(default=None, ge=2000, le=2100),
     kabupaten: str | None = Query(default=None),
 ):
+    response.headers["Cache-Control"] = "public, max-age=300"
     return _build_peta_pernikahan_dini(tahun, kabupaten)
 
 @router.get("/pernikahan-dini")

@@ -1,6 +1,7 @@
 import html
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from time import struct_time
@@ -14,16 +15,9 @@ from fastapi import APIRouter, HTTPException, Query
 router = APIRouter(prefix="/news", tags=["Berita"])
 
 NEWS_QUERIES = (
-    "pernikahan dini Indonesia",
-    "perkawinan anak Indonesia",
-    "dispensasi kawin Indonesia",
-)
-TOPIC_KEYWORDS = (
-    "pernikahan dini",
-    "perkawinan anak",
-    "pernikahan anak",
-    "dispensasi kawin",
-    "dispensasi nikah",
+    '"pernikahan dini" "Jawa Barat"',
+    '"perkawinan anak" "Jawa Barat"',
+    '"dispensasi kawin" "Jawa Barat"',
 )
 GOOGLE_NEWS_RSS_URL = "https://news.google.com/rss/search?q={query}&hl=id&gl=ID&ceid=ID:id"
 REQUEST_TIMEOUT = float(os.getenv("NEWS_REQUEST_TIMEOUT", "8"))
@@ -110,8 +104,7 @@ def _parse_feed(payload: bytes) -> list[dict[str, object]]:
             link = link_element.attrib.get("href", "")
         link = _normalise_url(link)
         description = _strip_html(_text(_find_child(item, "description")) or _text(_find_child(item, "summary")))
-        searchable = f"{title} {description}".casefold()
-        if not title or not link or not any(keyword in searchable for keyword in TOPIC_KEYWORDS):
+        if not title or not link:
             continue
         date_values = (
             _text(_find_child(item, "published")),
@@ -149,14 +142,25 @@ def _fetch_feed(query: str) -> list[dict[str, object]]:
 
 
 @router.get("", response_model=list[dict[str, object]])
-def get_news(limit: int = Query(default=6, ge=1, le=50)) -> list[dict[str, object]]:
+def get_news(limit: int = Query(default=6, ge=1, le=6)) -> list[dict[str, object]]:
     articles: list[dict[str, object]] = []
     errors: list[str] = []
-    for query in NEWS_QUERIES:
-        try:
-            articles.extend(_fetch_feed(query))
-        except (HTTPError, URLError, TimeoutError, OSError, ElementTree.ParseError, ValueError) as exc:
-            errors.append(f"{query}: {exc}")
+    with ThreadPoolExecutor(max_workers=len(NEWS_QUERIES)) as executor:
+        futures = {
+            executor.submit(_fetch_feed, query): query for query in NEWS_QUERIES
+        }
+        for future in as_completed(futures):
+            try:
+                articles.extend(future.result())
+            except (
+                HTTPError,
+                URLError,
+                TimeoutError,
+                OSError,
+                ElementTree.ParseError,
+                ValueError,
+            ) as exc:
+                errors.append(f"{futures[future]}: {exc}")
 
     if not articles and errors:
         raise HTTPException(status_code=502, detail="Feed berita tidak dapat diakses")
