@@ -306,7 +306,7 @@ _EXPORT_HEADERS = [
     "Status Penanganan", "Tanggal Masuk", "Terakhir Diperbarui",
 ]
 
-def _report_to_row(report: Report, reporter: User) -> list:
+def _report_to_row(report: Report) -> list:
     return [
         report.id,
         report.pelapor_nama,
@@ -340,7 +340,7 @@ def export_reports_csv(
     user: User = Depends(require_roles("admin_pemda", "admin_pemprov")),
 ):
     """Ekspor rekap laporan ke format CSV."""
-    query = select(Report, User).join(User, User.id == Report.reporter_id).order_by(Report.created_at)
+    query = select(Report).order_by(Report.created_at)
     query = scope_reports_to_user(query, user)
     if user.role != "admin_pemda" and kode_kabupaten:
         query = query.where(Report.kode_kabupaten == kode_kabupaten)
@@ -349,8 +349,8 @@ def export_reports_csv(
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(_EXPORT_HEADERS)
-    for report, reporter in db.execute(query):
-        writer.writerow(_report_to_row(report, reporter))
+    for report in db.scalars(query):
+        writer.writerow(_report_to_row(report))
     output.seek(0)
     return StreamingResponse(
         iter([output.getvalue()]),
@@ -368,7 +368,7 @@ def export_reports_xlsx(
     user: User = Depends(require_roles("admin_pemda", "admin_pemprov")),
 ):
     """Ekspor rekap laporan ke format Excel (.xlsx) dengan styling."""
-    query = select(Report, User).join(User, User.id == Report.reporter_id).order_by(Report.created_at)
+    query = select(Report).order_by(Report.created_at)
     query = scope_reports_to_user(query, user)
     if user.role != "admin_pemda" and kode_kabupaten:
         query = query.where(Report.kode_kabupaten == kode_kabupaten)
@@ -392,8 +392,11 @@ def export_reports_xlsx(
 
     # Data rows
     alt_fill = PatternFill(start_color="EEF2F7", end_color="EEF2F7", fill_type="solid")
-    for idx, (report, reporter) in enumerate(db.execute(query), start=2):
-        ws.append(_report_to_row(report, reporter))
+    data_align = Alignment(vertical="top", wrap_text=True)
+    for idx, report in enumerate(db.scalars(query), start=2):
+        ws.append(_report_to_row(report))
+        for cell in ws[idx]:
+            cell.alignment = data_align
         if idx % 2 == 0:
             for cell in ws[idx]:
                 cell.fill = alt_fill
