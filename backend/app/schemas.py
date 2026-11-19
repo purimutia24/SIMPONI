@@ -87,6 +87,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     phone: Optional[str] = None
+    wilayah: Optional[str] = None
     profile_photo: Optional[str] = None
     role: str
     kode_kabupaten: Optional[int] = None

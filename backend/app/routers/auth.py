@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.deps import bearer_scheme, get_current_user
 from app.models import AccessToken, User, utcnow
+from app.report_scope import DISTRICT_NAMES, district_code_from_name
 from app.schemas import ForgotPasswordRequest, LoginRequest, RegisterRequest, ResetPasswordRequest, TokenResponse, UserResponse, VerificationResponse
 from app.security import create_access_token, get_access_token_expiry, hash_password, hash_token, verify_password
 
@@ -138,7 +139,11 @@ def send_verification_email(recipient: str, verification_token: str) -> None:
 
 
 def serialize_user(user: User) -> UserResponse:
-    return UserResponse.model_validate(user)
+    response = UserResponse.model_validate(user)
+    district_name = DISTRICT_NAMES.get(user.kode_kabupaten)
+    if district_name and district_name.startswith("Kab. "):
+        district_name = district_name.replace("Kab. ", "Kabupaten ", 1)
+    return response.model_copy(update={"wilayah": district_name})
 
 
 def store_access_token(db: Session, user: User) -> str:
@@ -332,6 +337,7 @@ async def _update_profile(
     full_name: str | None = None,
     phone: str = "",
     email: str | None = None,
+    wilayah: str | None = None,
     profile_photo: UploadFile | None = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -348,9 +354,24 @@ async def _update_profile(
     if existing:
         raise HTTPException(status_code=409, detail="Email sudah digunakan akun lain")
 
+    district_code = None
+    if wilayah is not None:
+        if not isinstance(wilayah, str):
+            raise HTTPException(status_code=422, detail="Kabupaten/kota domisili tidak valid")
+        district_code = district_code_from_name(wilayah)
+        if district_code is None:
+            raise HTTPException(status_code=422, detail="Kabupaten/kota domisili tidak valid")
+        if user.role != "public" and district_code != user.kode_kabupaten:
+            raise HTTPException(
+                status_code=403,
+                detail="Domisili akun petugas tidak dapat diubah melalui profil",
+            )
+
     user.full_name = full_name.strip()
     user.phone = phone.strip() or None
     user.email = normalized_email
+    if district_code is not None and user.role == "public":
+        user.kode_kabupaten = district_code
 
     if profile_photo is not None and getattr(profile_photo, "filename", None):
         content = await profile_photo.read(PROFILE_MAX_UPLOAD_BYTES + 1)
@@ -370,13 +391,16 @@ async def _update_profile(
     return serialize_user(user)
 
 
-async def _parse_profile_request(request: Request) -> tuple[str | None, str, str | None, UploadFile | None]:
+async def _parse_profile_request(
+    request: Request,
+) -> tuple[str | None, str, str | None, str | None, UploadFile | None]:
     content_type = request.headers.get("content-type", "").lower()
     if content_type.startswith("multipart/form-data"):
         form = await request.form()
         full_name = form.get("full_name") or form.get("name")
         phone = form.get("phone") or ""
         email = form.get("email")
+        wilayah = form.get("wilayah")
         profile_photo = form.get("profile_photo") or form.get("photo")
     elif content_type.startswith("application/json"):
         try:
@@ -388,6 +412,7 @@ async def _parse_profile_request(request: Request) -> tuple[str | None, str, str
         full_name = payload.get("full_name") or payload.get("name")
         phone = payload.get("phone") or payload.get("telepon") or ""
         email = payload.get("email")
+        wilayah = payload.get("wilayah")
         profile_photo = None
     else:
         raise HTTPException(
@@ -395,7 +420,7 @@ async def _parse_profile_request(request: Request) -> tuple[str | None, str, str
             detail="Profil harus dikirim sebagai multipart/form-data atau application/json",
         )
 
-    return full_name, phone, email, profile_photo
+    return full_name, phone, email, wilayah, profile_photo
 
 
 async def _handle_profile_update(
@@ -403,14 +428,15 @@ async def _handle_profile_update(
     user: User,
     db: Session,
 ):
-    full_name, phone, email, profile_photo = await _parse_profile_request(request)
+    full_name, phone, email, wilayah, profile_photo = await _parse_profile_request(request)
     return await _update_profile(
-        full_name,
-        phone,
-        email,
-        profile_photo,
-        user,
-        db,
+        full_name=full_name,
+        phone=phone,
+        email=email,
+        wilayah=wilayah,
+        profile_photo=profile_photo,
+        user=user,
+        db=db,
     )
 
 

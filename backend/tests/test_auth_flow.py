@@ -1,7 +1,9 @@
+import asyncio
+import json
 import unittest
 from unittest.mock import patch
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
@@ -81,6 +83,74 @@ class AuthFlowTests(unittest.TestCase):
         self.assertEqual(error.exception.status_code, 401)
         self.assertIn("atau akun Admin Pemda tidak aktif", error.exception.detail)
         self.assertIn("Admin Pemprov", error.exception.detail)
+
+    def test_profile_update_persists_domicile_and_returns_it(self):
+        body = json.dumps({
+            "full_name": "Public Test",
+            "email": "public@example.test",
+            "phone": "081234567890",
+            "wilayah": "Kabupaten Garut",
+        }).encode()
+
+        async def receive():
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        request = Request(
+            {
+                "type": "http",
+                "method": "PATCH",
+                "path": "/auth/me",
+                "headers": [(b"content-type", b"application/json")],
+            },
+            receive,
+        )
+        response = asyncio.run(
+            auth._handle_profile_update(request, self.public, self.db)
+        )
+
+        self.assertEqual(self.public.kode_kabupaten, 3205)
+        self.assertEqual(response.wilayah, "Kabupaten Garut")
+        self.assertEqual(auth.serialize_user(self.public).wilayah, "Kabupaten Garut")
+
+    def test_profile_update_rejects_unknown_domicile_without_changing_user(self):
+        body = json.dumps({
+            "full_name": "Public Test",
+            "email": "public@example.test",
+            "wilayah": "Kabupaten Tidak Ada",
+        }).encode()
+
+        async def receive():
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        request = Request(
+            {
+                "type": "http",
+                "method": "PATCH",
+                "path": "/auth/me",
+                "headers": [(b"content-type", b"application/json")],
+            },
+            receive,
+        )
+        with self.assertRaises(HTTPException) as error:
+            asyncio.run(auth._handle_profile_update(request, self.public, self.db))
+
+        self.assertEqual(error.exception.status_code, 422)
+        self.assertIsNone(self.public.kode_kabupaten)
+
+    def test_profile_update_cannot_change_officer_scope(self):
+        with self.assertRaises(HTTPException) as error:
+            asyncio.run(
+                auth._update_profile(
+                    full_name="Pemda Test",
+                    email=self.pemda.email,
+                    wilayah="Kota Bandung",
+                    user=self.pemda,
+                    db=self.db,
+                )
+            )
+
+        self.assertEqual(error.exception.status_code, 403)
+        self.assertEqual(self.pemda.kode_kabupaten, 3205)
 
     def test_register_requires_email_verification_before_login(self):
         sent_email = {}
