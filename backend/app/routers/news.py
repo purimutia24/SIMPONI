@@ -70,20 +70,42 @@ def _find_child(element: ElementTree.Element, name: str) -> ElementTree.Element 
 
 def _find_image(element: ElementTree.Element) -> str:
     for child in element.iter():
-        if _local_name(child.tag) in {
+        tag_name = _local_name(child.tag)
+        if tag_name in {
             "content",
             "thumbnail",
             "enclosure",
             "media_content",
             "media_thumbnail",
         }:
-            image_url = child.attrib.get("url", "") or child.attrib.get("href", "")
+            image_url = (
+                child.attrib.get("url", "")
+                or child.attrib.get("href", "")
+                or child.attrib.get("src", "")
+            )
             media_type = child.attrib.get("type", "")
-            if image_url and (media_type.startswith("image/") or _local_name(child.tag) != "enclosure"):
+            if image_url and (media_type.startswith("image/") or tag_name != "enclosure"):
                 return image_url
 
-    description = _find_child(element, "description")
-    if description is not None:
+        if tag_name == "link":
+            relation = child.attrib.get("rel", "").lower().split()
+            media_type = child.attrib.get("type", "").lower()
+            image_url = child.attrib.get("href", "") or child.attrib.get("url", "")
+            if image_url and (
+                "image" in relation
+                or ("enclosure" in relation and media_type.startswith("image/"))
+            ):
+                return image_url
+
+        if tag_name == "img":
+            image_url = child.attrib.get("src", "") or child.attrib.get("data-src", "")
+            if image_url:
+                return html.unescape(image_url)
+
+    for name in ("description", "summary", "content", "encoded"):
+        description = _find_child(element, name)
+        if description is None:
+            continue
         raw_description = "".join(description.itertext())
         match = re.search(r'<img[^>]+src=["\']([^"\']+)', raw_description, re.IGNORECASE)
         if match:
