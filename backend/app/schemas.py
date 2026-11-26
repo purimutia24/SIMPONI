@@ -103,6 +103,25 @@ class TokenResponse(BaseModel):
     user: UserResponse
 
 
+class FAQCreate(BaseModel):
+    category: str = Field(min_length=2, max_length=80)
+    question: str = Field(min_length=5, max_length=500)
+    answer: str = Field(min_length=5, max_length=10000)
+    order_index: int = Field(default=0, ge=0)
+    is_active: bool = True
+
+
+class FAQUpdate(FAQCreate):
+    pass
+
+
+class FAQResponse(FAQCreate):
+    id: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ReportCreate(BaseModel):
     pelapor_nama: str = Field(min_length=3, max_length=150)
     pelapor_nik: str = Field(min_length=16, max_length=16)

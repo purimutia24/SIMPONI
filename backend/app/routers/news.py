@@ -1,23 +1,106 @@
+import hashlib
 import html
+import mimetypes
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
+from pathlib import Path
 from time import struct_time
 from urllib.parse import quote, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 from xml.etree import ElementTree
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request as FastAPIRequest
+from fastapi.responses import FileResponse
 
 router = APIRouter(prefix="/news", tags=["Berita"])
+NEWS_IMAGE_DIR = Path(__file__).resolve().parents[3] / "fe" / "src" / "assets" / "images"
+NEWS_LOCAL_IMAGES = (
+    "jabar1.png",
+    "jabar2.png",
+    "jabar3.png",
+    "jabar4.png",
+    "jabar1.1.png",
+    "jabar1.2.png",
+    "jabar1.3.png",
+    "jabar5.jpg",
+    "jabar6.jpg",
+    "seminar.jpeg",
+    "pernikahan-dini.jpeg",
+)
 
 NEWS_QUERIES = (
     '"pernikahan dini" "Jawa Barat"',
     '"perkawinan anak" "Jawa Barat"',
     '"dispensasi kawin" "Jawa Barat"',
+)
+CHILD_MARRIAGE_TERMS = (
+    "pernikahan dini",
+    "perkawinan dini",
+    "pernikahan anak",
+    "perkawinan anak",
+    "pernikahan di bawah umur",
+    "perkawinan di bawah umur",
+    "pernikahan bawah umur",
+    "perkawinan bawah umur",
+    "dispensasi kawin",
+    "dispensasi nikah",
+    "child marriage",
+)
+WEST_JAVA_LOCATIONS = (
+    "jawa barat",
+    "jabar",
+    "bandung barat",
+    "kabupaten bandung",
+    "kota bandung",
+    "kabupaten bogor",
+    "kota bogor",
+    "kabupaten bekasi",
+    "kota bekasi",
+    "kabupaten sukabumi",
+    "kota sukabumi",
+    "kabupaten cirebon",
+    "kota cirebon",
+    "kabupaten tasikmalaya",
+    "kota tasikmalaya",
+    "kabupaten garut",
+    "kabupaten ciamis",
+    "kota banjar",
+    "kabupaten kuningan",
+    "kabupaten sumedang",
+    "kabupaten indramayu",
+    "kabupaten subang",
+    "kabupaten purwakarta",
+    "kabupaten karawang",
+    "kabupaten cianjur",
+    "kabupaten majalengka",
+    "kabupaten pangandaran",
+    "kota cimahi",
+    "kota depok",
+    "kota banjar",
+    "garut",
+    "ciamis",
+    "kuningan",
+    "sumedang",
+    "indramayu",
+    "subang",
+    "purwakarta",
+    "karawang",
+    "cianjur",
+    "majalengka",
+    "pangandaran",
+    "cimahi",
+    "depok",
+    "bogor",
+    "bekasi",
+    "sukabumi",
+    "cirebon",
+    "tasikmalaya",
+    "bandung",
+    "banjar",
 )
 GOOGLE_NEWS_RSS_URL = "https://news.google.com/rss/search?q={query}&hl=id&gl=ID&ceid=ID:id"
 REQUEST_TIMEOUT = float(os.getenv("NEWS_REQUEST_TIMEOUT", "8"))
@@ -154,6 +237,35 @@ def _parse_feed(payload: bytes) -> list[dict[str, object]]:
     return articles
 
 
+def _contains_phrase(text: str, phrases: tuple[str, ...]) -> bool:
+    return any(
+        re.search(rf"(?<!\w){re.escape(phrase)}(?!\w)", text) is not None
+        for phrase in phrases
+    )
+
+
+def _is_relevant_article(article: dict[str, object]) -> bool:
+    searchable_text = " ".join(
+        str(article.get(field, ""))
+        for field in ("title", "description", "source")
+    ).casefold()
+    if not (
+        _contains_phrase(searchable_text, CHILD_MARRIAGE_TERMS)
+        and _contains_phrase(searchable_text, WEST_JAVA_LOCATIONS)
+    ):
+        return False
+
+    localities = tuple(
+        location for location in WEST_JAVA_LOCATIONS if location not in {"jawa barat", "jabar"}
+    )
+    is_national_province_roundup = (
+        _contains_phrase(searchable_text, ("provinsi",))
+        and _contains_phrase(searchable_text, ("indonesia",))
+        and not _contains_phrase(searchable_text, localities)
+    )
+    return not is_national_province_roundup
+
+
 def _fetch_feed(query: str) -> list[dict[str, object]]:
     request = Request(
         GOOGLE_NEWS_RSS_URL.format(query=quote(query)),
@@ -163,8 +275,22 @@ def _fetch_feed(query: str) -> list[dict[str, object]]:
         return _parse_feed(response.read())
 
 
+@router.get("/images/{image_name}", name="serve_news_local_image")
+def serve_news_local_image(image_name: str) -> FileResponse:
+    if image_name not in NEWS_LOCAL_IMAGES:
+        raise HTTPException(status_code=404, detail="Gambar berita tidak ditemukan")
+    image_path = NEWS_IMAGE_DIR / image_name
+    if not image_path.is_file():
+        raise HTTPException(status_code=503, detail="Gambar berita tidak tersedia di server")
+    media_type, _ = mimetypes.guess_type(image_path.name)
+    return FileResponse(image_path, media_type=media_type)
+
+
 @router.get("", response_model=list[dict[str, object]])
-def get_news(limit: int = Query(default=6, ge=1, le=6)) -> list[dict[str, object]]:
+def get_news(
+    request: FastAPIRequest,
+    limit: int = Query(default=9, ge=1, le=9),
+) -> list[dict[str, object]]:
     articles: list[dict[str, object]] = []
     errors: list[str] = []
     with ThreadPoolExecutor(max_workers=len(NEWS_QUERIES)) as executor:
@@ -189,13 +315,30 @@ def get_news(limit: int = Query(default=6, ge=1, le=6)) -> list[dict[str, object
 
     deduplicated: dict[str, dict[str, object]] = {}
     for article in articles:
+        if not _is_relevant_article(article):
+            continue
         deduplicated.setdefault(str(article["link"]), article)
     sorted_articles = sorted(
         deduplicated.values(),
         key=lambda article: article["_published"],
         reverse=True,
     )
-    return [
-        {key: value for key, value in article.items() if not key.startswith("_")}
-        for article in sorted_articles[:limit]
-    ]
+    results = []
+    used_local_images: set[str] = set()
+    for article in sorted_articles[:limit]:
+        result = {key: value for key, value in article.items() if not key.startswith("_")}
+        if not result["image"]:
+            start_index = int.from_bytes(
+                hashlib.sha256(str(article["link"]).encode("utf-8")).digest()[:4],
+                "big",
+            ) % len(NEWS_LOCAL_IMAGES)
+            for offset in range(len(NEWS_LOCAL_IMAGES)):
+                image_name = NEWS_LOCAL_IMAGES[(start_index + offset) % len(NEWS_LOCAL_IMAGES)]
+                if image_name not in used_local_images:
+                    used_local_images.add(image_name)
+                    result["image"] = str(
+                        request.url_for("serve_news_local_image", image_name=image_name)
+                    )
+                    break
+        results.append(result)
+    return results

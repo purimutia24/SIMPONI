@@ -44,6 +44,24 @@ class AccessToken(Base):
 	revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class FAQ(Base):
+	__tablename__ = "faqs"
+
+	id: Mapped[int] = mapped_column(Integer, primary_key=True)
+	category: Mapped[str] = mapped_column(String(80), index=True)
+	question: Mapped[str] = mapped_column(String(500))
+	answer: Mapped[str] = mapped_column(Text)
+	order_index: Mapped[int] = mapped_column(Integer, default=0, index=True)
+	is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+	created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class FAQInitialization(Base):
+	__tablename__ = "faq_initialization"
+
+	key: Mapped[str] = mapped_column(String(50), primary_key=True)
+
+
 class Wilayah(Base):
 	"""Hierarchical master data so districts can be added for any province."""
 	__tablename__ = "wilayah"

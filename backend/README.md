@@ -88,6 +88,21 @@ hanya berisi metadata dan cuplikan feed (`title`, `link`, `source`,
 Timeout feed dapat diubah melalui `NEWS_REQUEST_TIMEOUT`. CORS mengikuti
 `FRONTEND_ORIGINS` yang juga digunakan endpoint lain.
 
+## Pusat Bantuan (FAQ)
+
+FAQ disimpan di tabel `faqs`, yang dibuat otomatis saat API dimulai. Instalasi
+baru mendapatkan daftar awal berisi pertanyaan umum; daftar tersebut dapat
+dikelola Admin Pemprov dan tidak akan ditambahkan ulang setelah tabel berisi
+data.
+
+- `GET /api/v1/faqs` menampilkan FAQ aktif berdasarkan `order_index` dan
+  mendukung filter opsional `search` serta `category`.
+- `GET /api/v1/admin/faqs` menampilkan seluruh FAQ, termasuk draf.
+- `POST /api/v1/admin/faqs`, `PUT /api/v1/admin/faqs/{faq_id}`, dan
+  `DELETE /api/v1/admin/faqs/{faq_id}` mengelola pertanyaan. Semua endpoint
+  admin memerlukan bearer token Admin Pemprov. Urutan diatur melalui
+  `order_index`, sedangkan `is_active: false` menyimpan pertanyaan sebagai draf.
+
 Run the full API integration suite in an isolated temporary database and port:
 
 ```bash

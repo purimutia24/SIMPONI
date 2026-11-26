@@ -11,7 +11,7 @@ from pathlib import Path
 from app.database import Base, SessionLocal, engine
 from app.models import User
 import app.models
-from app.routers import admin, auth, news, reports, statistik
+from app.routers import admin, auth, faqs, news, reports, statistik
 from app.report_scope import backfill_report_district_codes
 from app.security import hash_password
 
@@ -91,6 +91,7 @@ app.include_router(statistik.router, prefix="/api/v1/statistik", tags=["Statisti
 app.include_router(auth.router,      prefix="/api/v1",           tags=["Autentikasi"])
 app.include_router(reports.router,   prefix="/api/v1",           tags=["Laporan"])
 app.include_router(admin.router,     prefix="/api/v1",           tags=["Administrasi"])
+app.include_router(faqs.router,      prefix="/api/v1")
 app.include_router(news.router,      prefix="/api/v1",           tags=["Berita"])
 
 
@@ -99,6 +100,11 @@ app.include_router(news.router,      prefix="/api/v1",           tags=["Berita"]
 def initialize_database():
     """Buat semua tabel (idempoten) dan seed akun Admin Pemprov jika belum ada."""
     Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        faqs.seed_initial_faqs(db)
+    finally:
+        db.close()
     ensure_report_photo_column()
 
     # Migrasi kolom lama jika menggunakan DB yang sudah ada sebelum skema baru
